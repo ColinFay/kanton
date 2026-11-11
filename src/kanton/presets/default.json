@@ -1,0 +1,36 @@
+{
+  "name": "default",
+  "output": {"width": 1080, "height": 1920, "fps": 30},
+  "text": {
+    "font": "Anton-Regular.ttf",
+    "size": 60,
+    "fill": "#FFFFFF",
+    "stroke": "#000000",
+    "stroke_width": 7,
+    "line_step": null,
+    "uppercase": true,
+    "align": "center",
+    "max_width": 780,
+    "x": 540,
+    "y_baseline": 1432,
+    "max_lines": 2,
+    "roles": {},
+    "highlight": null
+  },
+  "safe_zone": {"top": 270, "bottom": 1432, "left": 150, "right": 930},
+  "zoom": {"focus": [540, 600], "validated": [100, 106], "sourced": [110, 120]},
+  "captions": {
+    "gap": 0.35,
+    "min_frames": 25,
+    "max_frames": 210,
+    "snap_frames": 16,
+    "lead_frames": 1
+  },
+  "blanks": {"min": 0.30, "pre": 0.08, "post": 0.12, "min_cut": 0.20, "min_keep_frames": 9},
+  "audio": {"lufs": -16.5, "tp": -1.5, "lra": 11, "cut_fade_frames": 2},
+  "export": {"crf": 17, "preset": "slow", "maxrate_cap_mbps": 25, "mbit_seconds": 2400, "max_mb": 300, "min_mbps": 12},
+  "transitions": {"duration": 0.3},
+  "canvas": {"background": null},
+  "filters": {},
+  "hlg_lut": null
+}

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+dist/
+build/
+*.egg-info/
+.venv/
+.kanton-tmp/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/
+*.mp4
+*.mov
+*.mkv
+*.wav
+!docs/
+
+CLAUDE.local.md

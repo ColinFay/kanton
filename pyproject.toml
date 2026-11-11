@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kanton"
+version = "0.1.0"
+description = "Forever free, open source, agent-first, lightweight video editor for vertical short-form: a JSON cut list rendered by ffmpeg."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Colin Fay" }]
+keywords = ["video", "ffmpeg", "reels", "shorts", "subtitles", "agent"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Video",
+  "Environment :: Console",
+]
+dependencies = ["Pillow>=10"]
+
+[project.optional-dependencies]
+whisper = ["faster-whisper>=1.0"]
+mlx = ["mlx-whisper"]
+app = ["pywebview>=5", "faster-whisper>=1.1"]
+dev = ["pytest>=8", "pywebview>=5", "pyinstaller>=6.10", "faster-whisper>=1.1"]
+
+[project.scripts]
+kanton = "kanton.cli:main"
+
+[project.urls]
+Repository = "https://github.com/colinfay/kanton"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kanton"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
