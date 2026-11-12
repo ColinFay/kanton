@@ -295,11 +295,14 @@ const inApp = () => !!window.pywebview;
 function showStart(on){ $('#start').style.display = on ? 'flex' : 'none'; }
 async function viaApi(fn){ try { const r = await fn(); if (!r || !r.ok) { if (r && r.error && r.error !== 'cancelled') { $('#sMsg').textContent = r.error; setStatus('✗ ' + r.error, true); } return; } await load(); } catch (e) { setStatus('✗ ' + e, true); } }
 async function load(){
-  D = await (await fetch('/api/spec')).json();
+  const j = await (await fetch('/api/spec')).json();
+  const oldSources = (D && D.sources) || {};          // snapshot and swap in one synchronous step: overlapping loads cannot compare against a stale D
+  D = j;
   if (inApp()) $('#appBtns').style.display = '';
   if (!D.spec) { showStart(true); $('#name').textContent = ''; setStatus(inApp() ? '' : 'No project: run kanton edit montage.json'); $('#sOpen').disabled = $('#sNew').disabled = !inApp(); return; }
   showStart(false);
-  S = D.spec; S.blocks = S.blocks || []; S.texts = S.texts || []; S.overlays = S.overlays || []; LAY = {}; CAT = D.catalog || CAT; STRIP.clear(); PEAKS.clear();
+  S = D.spec; S.blocks = S.blocks || []; S.texts = S.texts || []; S.overlays = S.overlays || []; LAY = {}; CAT = D.catalog || CAT;
+  for (const m of [STRIP, PEAKS]) for (const k of [...m.keys()]) if (!D.sources || JSON.stringify(oldSources[k]) !== JSON.stringify(D.sources[k])) m.delete(k);   // keep what belongs to an unchanged source
   $('#name').textContent = D.name; $('#fmt').value = (S.export && S.export.format) || 'mp4';
   recompute(); draw(); ops = []; P = null; clip = null; renderWords(); inspect(); renderLib(); dirty = false; setStatus(''); undo = []; redo = []; last = JSON.stringify(S); $('#bUndo').disabled = $('#bRedo').disabled = true; seek(0);
   const sz = D.safe_zone || {}; const e = $('#safe'); e.style.left = (sz.left||0)+'px'; e.style.top = (sz.top||0)+'px'; e.style.width = ((sz.right||1080)-(sz.left||0))+'px'; e.style.height = ((sz.bottom||1432)-(sz.top||0))+'px';
@@ -582,9 +585,17 @@ function stripOf(src){
   if (!STRIP.has(src)) { const img = new Image(); img.onload = () => draw(); img.onerror = () => setTimeout(() => { img.src = s.strip.url + '?t=' + Date.now(); }, 2000); img.src = s.strip.url; STRIP.set(src, img); }   // 202 while the strip is built
   const img = STRIP.get(src); return img.complete && img.naturalWidth ? s.strip : null;
 }
+const srcRev = src => JSON.stringify(D && D.sources && D.sources[src]);   // identity of a source: a reply for another one is stale
+function retryPeaks(src, rev){ setTimeout(() => { if (srcRev(src) === rev) { PEAKS.delete(src); draw(); } }, 2000); }   // a failed request is forgotten, so it is asked again
 function peaksOf(src){
   const s = D.sources[src]; if (!s || !s.has_audio) return null;
-  if (!PEAKS.has(src)) { PEAKS.set(src, null); fetch('/api/peaks/' + src).then(r => r.ok ? r.json() : null).then(j => { if (j) { PEAKS.set(src, j); draw(); } }).catch(() => {}); }
+  if (!PEAKS.has(src)) {
+    const rev = srcRev(src); PEAKS.set(src, null);
+    fetch('/api/peaks/' + src).then(r => r.ok ? r.json() : null).then(j => {
+      if (srcRev(src) !== rev) return;   // the source changed meanwhile: load() already dropped it, draw() asks again
+      if (j) { PEAKS.set(src, j); draw(); } else retryPeaks(src, rev);
+    }).catch(() => retryPeaks(src, rev));
+  }
   return PEAKS.get(src);
 }
 let drawnSL = 0, VR = [0, 0];                    // the scroll of the last draw, and the span it drew strips and waves on
