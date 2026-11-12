@@ -158,3 +158,21 @@ def test_export_formats_and_cover(media, spec_file, tmp_path):
         i = ffmpeg.probe(str(out))
         assert out.suffix == f".{fmt}" and i["codec"] == codec, (fmt, i["codec"])
         assert abs(i["duration"] - 0.6) < 0.15
+
+
+def _audio_md5(path):
+    import subprocess
+    r = subprocess.run([ffmpeg.binary("ffmpeg"), "-hide_banner", "-v", "error", "-i", str(path), "-map", "0:a", "-f", "md5", "-"], capture_output=True, text=True, check=True)
+    return r.stdout.strip()
+
+
+def test_final_audio_is_identical_between_renders(media, spec_file, tmp_path):
+    """Same spec, same files: the decoded audio (voice + ducked music + sound) is identical across fresh and cached renders."""
+    s = mk(media, spec_file, blocks=[{"src": "face", "in": 0, "out": 2}, {"src": "redblue", "in": 0, "out": 1}, {"src": "face", "in": 3, "out": 5}],
+           music={"src": "music", "gain_db": -8, "fade_out": 0.5, "duck": True}, sounds=[{"src": "music1", "t": 0.7, "dur": 0.4, "gain_db": -3}])
+    a = render(s, tmp_path / "a.mp4", tmp=tmp_path / "ta")
+    b = render(s, tmp_path / "b.mp4", tmp=tmp_path / "tb")
+    c = render(s, tmp_path / "c.mp4", tmp=tmp_path / "ta")      # cached pass-1 segments
+    ma, mb, mc = _audio_md5(a), _audio_md5(b), _audio_md5(c)
+    assert ma == mb, "fresh tmp vs fresh tmp"
+    assert ma == mc, "fresh tmp vs cached tmp"
