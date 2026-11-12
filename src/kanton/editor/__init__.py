@@ -314,7 +314,7 @@ def _payload(spec: Spec | None) -> dict:
         try:
             i = ffmpeg.probe(path)
             sources[key] = {"path": path, "duration": i["duration"], "width": i["width"], "height": i["height"], "kind": i["kind"], "has_audio": i["has_audio"],
-                            "has_alpha": i["has_alpha"], "url": f"/media/{key}", "strip": strip_meta(key, i)}
+                            "has_alpha": i["has_alpha"], "url": f"/media/{key}", "rev": Path(path).stat().st_mtime_ns, "strip": strip_meta(key, i)}
         except SystemExit:
             sources[key] = {"path": path, "missing": True}
     strip = lambda d: {k: v for k, v in d.items() if k != "path"}

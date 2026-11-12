@@ -55,6 +55,18 @@ def test_strip_is_served_at_once_after_the_spec_is_rewritten_on_disk(server):
     assert code == 200 and h["Content-Type"] == "image/jpeg"
 
 
+def test_source_revision_changes_when_the_media_is_replaced_in_place(server):
+    """The page keeps strips and waves of an unchanged source: a file overwritten with the same metadata must still change the descriptor."""
+    import os
+    src = lambda: json.loads(get(server["url"] + "/api/spec")[2])["sources"]["face"]
+    a = src()
+    assert isinstance(a["rev"], int) and src() == a                       # stable while the file is untouched
+    st = Path(a["path"]).stat()
+    os.utime(a["path"], ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+    b = src()
+    assert b["rev"] != a["rev"] and {k: v for k, v in b.items() if k != "rev"} == {k: v for k, v in a.items() if k != "rev"}
+
+
 def test_peaks_show_the_silences(server):
     d = json.loads(get(server["url"] + "/api/peaks/face")[2])
     p, r = d["peaks"], d["rate"]
