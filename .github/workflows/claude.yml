@@ -17,8 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
-      - run: python3 -m venv .venv && .venv/bin/pip install -q -e ".[app]" pytest
+      - run: python3 -m venv .venv && .venv/bin/pip install -q -e ".[app]" pytest && echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: --allowedTools "Bash(.venv/bin/python -m pytest:*)"
+          claude_args: --allowedTools "Bash(.venv/bin/python -m pytest:*),Bash(python -m pytest:*),Bash(ffmpeg:*),Bash(ffprobe:*)"
