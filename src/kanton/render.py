@@ -521,7 +521,8 @@ class Renderer:
         acur = "va"
         if duck:
             lab, d = duck
-            self._fc.append(f"[va]asplit[va0][sc];[{lab}][sc]sidechaincompress=threshold={d['threshold']}:ratio={d['ratio']}:attack={d['attack']}:release={d['release']}[{lab}d]")
+            # fixed frame size on both inputs: sidechaincompress otherwise sees them cut differently from run to run (threaded scheduling)
+            self._fc.append(f"[va]asplit[va0][sc0];[sc0]asetnsamples=n=1024:p=0[sc];[{lab}]asetnsamples=n=1024:p=0[{lab}n];[{lab}n][sc]sidechaincompress=threshold={d['threshold']}:ratio={d['ratio']}:attack={d['attack']}:release={d['release']}[{lab}d]")
             layers[layers.index(lab)], acur = f"{lab}d", "va0"
         if layers:
             self._fc.append(f"[{acur}]" + "".join(f"[{l}]" for l in layers) + f"amix=inputs={1 + len(layers)}:duration=first:normalize=0[aout]")
