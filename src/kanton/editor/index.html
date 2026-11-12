@@ -585,10 +585,17 @@ function stripOf(src){
   if (!STRIP.has(src)) { const img = new Image(); img.onload = () => draw(); img.onerror = () => setTimeout(() => { img.src = s.strip.url + '?t=' + Date.now(); }, 2000); img.src = s.strip.url; STRIP.set(src, img); }   // 202 while the strip is built
   const img = STRIP.get(src); return img.complete && img.naturalWidth ? s.strip : null;
 }
-function retryPeaks(src){ setTimeout(() => { PEAKS.delete(src); draw(); }, 2000); }   // a failed request is forgotten, so it is asked again
+const srcRev = src => JSON.stringify(D && D.sources && D.sources[src]);   // identity of a source: a reply for another one is stale
+function retryPeaks(src, rev){ setTimeout(() => { if (srcRev(src) === rev) { PEAKS.delete(src); draw(); } }, 2000); }   // a failed request is forgotten, so it is asked again
 function peaksOf(src){
   const s = D.sources[src]; if (!s || !s.has_audio) return null;
-  if (!PEAKS.has(src)) { PEAKS.set(src, null); fetch('/api/peaks/' + src).then(r => r.ok ? r.json() : null).then(j => { if (j) { PEAKS.set(src, j); draw(); } else retryPeaks(src); }).catch(() => retryPeaks(src)); }
+  if (!PEAKS.has(src)) {
+    const rev = srcRev(src); PEAKS.set(src, null);
+    fetch('/api/peaks/' + src).then(r => r.ok ? r.json() : null).then(j => {
+      if (srcRev(src) !== rev) return;   // the source changed meanwhile: load() already dropped it, draw() asks again
+      if (j) { PEAKS.set(src, j); draw(); } else retryPeaks(src, rev);
+    }).catch(() => retryPeaks(src, rev));
+  }
   return PEAKS.get(src);
 }
 let drawnSL = 0, VR = [0, 0];                    // the scroll of the last draw, and the span it drew strips and waves on
