@@ -19,10 +19,10 @@ classifiers = [
 dependencies = ["Pillow>=10"]
 
 [project.optional-dependencies]
-whisper = ["faster-whisper>=1.0"]
+whisper = ["faster-whisper>=1.0", "av<19"]
 mlx = ["mlx-whisper"]
-app = ["pywebview>=5", "faster-whisper>=1.1"]
-dev = ["pytest>=8", "pywebview>=5", "pyinstaller>=6.10", "faster-whisper>=1.1"]
+app = ["pywebview>=5", "faster-whisper>=1.1", "av<19"]
+dev = ["pytest>=8", "pywebview>=5", "pyinstaller>=6.10", "faster-whisper>=1.1", "av<19"]
 
 [project.scripts]
 kanton = "kanton.cli:main"

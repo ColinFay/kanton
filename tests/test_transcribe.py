@@ -119,3 +119,10 @@ def test_a_model_folder_on_disk_is_checked_before_it_is_used(monkeypatch, tmp_pa
     assert T.model_status()["present"] and T.model_status()["path"] == str(good)
     (good / "model.bin").unlink()                                   # gone since: back to "not here"
     assert not T.model_status()["present"] and T.model_for("faster") == "large-v3-turbo"
+
+
+def test_faster_whisper_decodes_the_extracted_wav(media, tmp_path):
+    """faster-whisper opens the wav with PyAV: av 19 dropped an argument it passes (metadata_errors), auto captions crashed."""
+    audio = pytest.importorskip("faster_whisper.audio")
+    wav = transcribe.extract_wav(str(media["face"]), 0.0, 1.0, tmp_path / "x.wav")
+    assert len(audio.decode_audio(str(wav))) > 0
