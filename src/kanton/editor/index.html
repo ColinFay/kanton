@@ -295,11 +295,13 @@ const inApp = () => !!window.pywebview;
 function showStart(on){ $('#start').style.display = on ? 'flex' : 'none'; }
 async function viaApi(fn){ try { const r = await fn(); if (!r || !r.ok) { if (r && r.error && r.error !== 'cancelled') { $('#sMsg').textContent = r.error; setStatus('✗ ' + r.error, true); } return; } await load(); } catch (e) { setStatus('✗ ' + e, true); } }
 async function load(){
+  const oldSources = (D && D.sources) || {};
   D = await (await fetch('/api/spec')).json();
   if (inApp()) $('#appBtns').style.display = '';
   if (!D.spec) { showStart(true); $('#name').textContent = ''; setStatus(inApp() ? '' : 'No project: run kanton edit montage.json'); $('#sOpen').disabled = $('#sNew').disabled = !inApp(); return; }
   showStart(false);
-  S = D.spec; S.blocks = S.blocks || []; S.texts = S.texts || []; S.overlays = S.overlays || []; LAY = {}; CAT = D.catalog || CAT; STRIP.clear(); PEAKS.clear();
+  S = D.spec; S.blocks = S.blocks || []; S.texts = S.texts || []; S.overlays = S.overlays || []; LAY = {}; CAT = D.catalog || CAT;
+  for (const m of [STRIP, PEAKS]) for (const k of [...m.keys()]) if (!D.sources || JSON.stringify(oldSources[k]) !== JSON.stringify(D.sources[k])) m.delete(k);   // keep what belongs to an unchanged source
   $('#name').textContent = D.name; $('#fmt').value = (S.export && S.export.format) || 'mp4';
   recompute(); draw(); ops = []; P = null; clip = null; renderWords(); inspect(); renderLib(); dirty = false; setStatus(''); undo = []; redo = []; last = JSON.stringify(S); $('#bUndo').disabled = $('#bRedo').disabled = true; seek(0);
   const sz = D.safe_zone || {}; const e = $('#safe'); e.style.left = (sz.left||0)+'px'; e.style.top = (sz.top||0)+'px'; e.style.width = ((sz.right||1080)-(sz.left||0))+'px'; e.style.height = ((sz.bottom||1432)-(sz.top||0))+'px';

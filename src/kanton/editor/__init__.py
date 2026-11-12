@@ -252,10 +252,17 @@ def strip_meta(key: str, info: dict) -> dict | None:
     return {"url": f"/strip/{key}.jpg", "rate": rate, "n": max(1, math.ceil(d * rate - 1e-9)), "w": 2 * math.ceil(STRIP_H * info["width"] / max(1, info["height"]) / 2), "h": STRIP_H}
 
 
-def ensure_strip(spec: Spec, key: str) -> Path:
+def fresh_strip(spec: Spec, key: str) -> Path | None:
+    """The filmstrip already on disk, if it is newer than its source."""
     src, out = spec.source(key), _tmp(spec) / f"strip-{key}.jpg"
-    if out.exists() and out.stat().st_mtime >= Path(src).stat().st_mtime:
+    return out if out.exists() and out.stat().st_mtime >= Path(src).stat().st_mtime else None
+
+
+def ensure_strip(spec: Spec, key: str) -> Path:
+    out = fresh_strip(spec, key)
+    if out:
         return out
+    src, out = spec.source(key), _tmp(spec) / f"strip-{key}.jpg"
     m = strip_meta(key, ffmpeg.probe(src))
     part = out.with_suffix(f".{threading.get_ident()}.part.jpg")
     ffmpeg.run(["-i", str(ensure_proxy(spec, key)), "-vf", f"fps={m['rate']:.6f},scale={m['w']}:{m['h']},tile={m['n']}x1", "-frames:v", "1", "-q:v", "5", str(part)])
@@ -633,6 +640,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(404, {"error": f"unknown source {key}"})
             try:
                 if m[1]:                      # built in the background; 202 while it is not there (the page asks again)
+                    done = fresh_strip(spec, key)
+                    if done:                  # already on disk (the spec was only reloaded): no pool job
+                        return self._file(done, "image/jpeg")
                     with st.lock:
                         job = st.strips.get(key) or st.strips.setdefault(key, st.seg_pool.submit(ensure_strip, spec, key))
                     if not job.done():
