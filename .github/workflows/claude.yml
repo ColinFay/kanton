@@ -21,4 +21,4 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: --allowedTools "Bash(.venv/bin/python:*),Bash(python -m pytest:*),Bash(ffmpeg:*),Bash(ffprobe:*),Bash(cat:*),Bash(ls:*),Bash(mkdir:*),Bash(cp:*),Bash(rm:*),Bash(md5sum:*),Bash(for:*),Bash(cd:*)"
+          claude_args: --allowedTools "Bash"
