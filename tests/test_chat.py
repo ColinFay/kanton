@@ -218,3 +218,16 @@ def test_tools_stay_in_the_spec_folder(tmp_path):
     assert "outside" in agent.run_tool("read_file", {"path": "../x"}, tmp_path)
     assert "outside" in agent.run_tool("write_file", {"path": "/etc/x", "content": "y"}, tmp_path)
     assert "show" in agent.run_tool("kanton", {"args": "--help"}, tmp_path)
+
+
+def test_provider_key_follows_the_chosen_api(monkeypatch):
+    from kanton import agent
+    for k in ("KANTON_AGENT_TOKEN", "KANTON_AGENT_API", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant"); monkeypatch.setenv("OPENAI_API_KEY", "sk-oai")
+    assert agent.config()["token"] == "sk-ant"
+    monkeypatch.setenv("KANTON_AGENT_API", "openai")
+    assert agent.config()["token"] == "sk-oai"          # never the Anthropic key sent to OpenAI
+    monkeypatch.delenv("OPENAI_API_KEY")
+    with pytest.raises(agent.AgentError, match="OPENAI_API_KEY"):
+        agent.config()

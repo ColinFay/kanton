@@ -39,13 +39,15 @@ class AgentError(Exception):
 def config() -> dict:
     """Token, API flavour, URL and model from the environment; AgentError when there is no token."""
     env = os.environ
-    token = env.get("KANTON_AGENT_TOKEN") or env.get("ANTHROPIC_API_KEY") or env.get("OPENAI_API_KEY")
-    if not token:
-        raise AgentError("no agent token: set KANTON_AGENT_TOKEN (or ANTHROPIC_API_KEY / OPENAI_API_KEY), "
-                         "or use a command-line agent with KANTON_AGENT=cli")
     api = env.get("KANTON_AGENT_API") or ("openai" if not env.get("KANTON_AGENT_TOKEN") and not env.get("ANTHROPIC_API_KEY") else "anthropic")
     if api not in _DEFAULTS:
         raise AgentError(f"KANTON_AGENT_API must be anthropic or openai, not {api!r}")
+    # the key of the chosen API only: never send an Anthropic key to OpenAI, or the reverse
+    provider_key = "ANTHROPIC_API_KEY" if api == "anthropic" else "OPENAI_API_KEY"
+    token = env.get("KANTON_AGENT_TOKEN") or env.get(provider_key)
+    if not token:
+        raise AgentError(f"no agent token for the {api} API: set KANTON_AGENT_TOKEN (or {provider_key}), "
+                         "or use a command-line agent with KANTON_AGENT=cli")
     url, model = _DEFAULTS[api]
     return {"token": token, "api": api, "url": (env.get("KANTON_AGENT_URL") or url).rstrip("/"), "model": env.get("KANTON_AGENT_MODEL") or model}
 
