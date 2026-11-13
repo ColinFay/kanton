@@ -141,3 +141,17 @@ def test_karaoke_and_typewriter_styles_write_the_words_into_the_cues(media, spec
     s2 = Spec.load(spec_file({"sources": {"face": str(media["face"])}, "blocks": [{"src": "face", "in": 1.0, "out": 4.0}], "preset": {"captions": {"style": "karaoke"}}}, "k.json"))
     apply_captions(s2, {"face": W("salut", 1.5)})
     assert s2.data["texts"][0]["highlight"] == {"scale": 1.12}                                                   # no preset highlight: the word pops
+
+
+def test_no_one_frame_junk_cue_from_snapping_across_a_neighbour():
+    """A cut far before a cue used to drag its start onto the cut, over the previous cue: two cues at the same t, the first one frame long."""
+    words = W("un", 0.0) + W("deux", 2.621) + W("trois quatre", 3.6)
+    cues = build_cues(words, STYLE, cuts=[2.6], fps=30, cfg=CFG)
+    assert [c["text"] for c in cues] == ["un", "deux", "trois quatre"]
+    assert len({round(c["t"], 4) for c in cues}) == len(cues)
+    assert all(c["dur"] > 5 / 30 for c in cues)
+
+
+def test_word_a_frame_before_a_cut_belongs_to_the_next_shot():
+    cues = build_cues(W("un", 0.0) + W("deux", 4.86), STYLE, cuts=[4.8667], fps=30, cfg=CFG)
+    assert cues[-1]["dur"] > 0.5

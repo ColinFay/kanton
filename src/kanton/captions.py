@@ -57,8 +57,10 @@ def build_cues(words: list[dict], style: TextStyle, cuts: list[float], fps: floa
         cues.append({"t": max(0.0, g[0]["start"] - cfg["lead_frames"] * F), "end": g[-1]["end"] + cfg["tail"],
                      "first": g[0]["start"], "last": g[-1]["end"], "text": " ".join(w["word"] for w in g), "words": g})
     snap = cfg["snap_frames"] * F
-    for c in cues:                                   # boundaries near a cut fall on the cut
-        for key, ok in (("t", lambda x: x <= c["first"] + 1e-9), ("end", lambda x: x >= c["last"] - 1e-9)):
+    for i, c in enumerate(cues):                     # boundaries near a cut fall on the cut, never across a neighbour's words
+        lo = cues[i - 1]["last"] if i else float("-inf")
+        hi = cues[i + 1]["first"] if i + 1 < len(cues) else float("inf")
+        for key, ok in (("t", lambda x: c["first"] + 1e-9 >= x >= lo - 1e-9), ("end", lambda x: c["last"] - 1e-9 <= x <= hi + 1e-9)):
             near = [x for x in cuts if abs(x - c[key]) <= snap + 1e-9 and ok(x)]
             if near:
                 c[key] = min(near, key=lambda x: abs(x - c[key]))
@@ -73,14 +75,15 @@ def build_cues(words: list[dict], style: TextStyle, cuts: list[float], fps: floa
             if nxt is not None:
                 c["end"] = min(c["end"], nxt)
         c["end"] = min(c["end"], c["t"] + cfg["max_frames"] * F)
-    for c in cues:                                   # inside its shot
-        c["t"] = max([c["t"]] + [x for x in cuts if x <= c["first"]])
-        c["end"] = min([c["end"]] + [x for x in cuts if x > c["first"]])
+    for c in cues:                                   # inside its shot (a word starting less than a frame before a cut belongs to the next shot)
+        c["t"] = max([c["t"]] + [x for x in cuts if x <= c["first"] + F])
+        c["end"] = min([c["end"]] + [x for x in cuts if x > c["first"] + F])
     out = []
     for c in cues:                                   # whole frames
         t0 = round(c["t"] * fps) / fps
         t1 = max(round(c["end"] * fps), round(c["t"] * fps) + 1) / fps
         out.append({"t": t0, "dur": t1 - t0, "text": c["text"], "words": c["words"]})
+    out = [a for a, b in zip(out, out[1:] + [None]) if b is None or b["t"] - a["t"] > 1e-9]   # no zero-length cue
     for a, b in zip(out, out[1:]):
         if a["t"] + a["dur"] > b["t"] + 1e-9:
             a["dur"] = max(1.0 / fps, b["t"] - a["t"])
