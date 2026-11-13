@@ -453,9 +453,17 @@ async function askModel(m){                          // the app's transcriber ne
 }
 async function importSrt(file){
   if (capBusy || (dirty && !(await save()))) return;
+  const srcs = [...new Set((S.blocks || []).map(b => b.src))];
+  let src;
+  if (srcs.length > 1) {                              // several sources: the .srt belongs to one of them
+    const a = prompt('This reel uses several sources. Which one does the .srt belong to?\n\n' + srcs.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\nType its number or name:', '1');
+    if (a === null) return;
+    src = srcs[parseInt(a, 10) - 1] || srcs.find(s => s === a.trim());
+    if (!src) { setStatus('✗ Unknown source: ' + a, true); return; }
+  }
   capBusy = true; renderLib(); renderWords(); busy('Reading the .srt…');
   try {
-    let j = await (await fetch('/api/captions', { method: 'POST', body: JSON.stringify({ srt: await file.text() }) })).json();
+    let j = await (await fetch('/api/captions', { method: 'POST', body: JSON.stringify({ srt: await file.text(), src }) })).json();
     while (j.status === 'running') { await new Promise(r => setTimeout(r, 500)); j = await (await fetch('/api/captions')).json(); }
     capBusy = false;
     if (j.status !== 'done') { renderLib(); renderWords(); setStatus('✗ ' + (j.error || 'Import failed.'), true); return; }
