@@ -166,7 +166,7 @@
   <button id="bUndo" class="icon" title="Undo (⌘Z)"><svg class="i"><use href="#i-undo"/></svg></button><button id="bRedo" class="icon" title="Redo (⇧⌘Z)"><svg class="i"><use href="#i-redo"/></svg></button>
   <button id="bPreview" title="Render a half-size preview and play it">Preview</button>
   <select id="fmt" title="Export format (written to the file as export.format)" style="width:auto"><option value="mp4">mp4</option><option value="mov">mov</option><option value="webm">webm</option><option value="gif">gif</option></select>
-  <button id="bExport" title="Save, then render the reel at full quality next to the project file">Export</button>
+  <button id="bExport" title="Save, then render the video at full quality next to the project file">Export</button>
   <button id="bReload">Revert</button><button id="bSave" class="primary">Save</button>
 </header>
 <div id="start">
@@ -197,7 +197,7 @@
       <button id="bPlay" class="icon" title="Play / pause (Space)"><svg class="i"><use href="#i-play"/></svg></button>
       <button id="bNext" class="icon" title="Next frame (→)"><svg class="i"><use href="#i-next"/></svg></button>
       <span id="tc">0.00 / 0.00</span>
-      <button id="bFit" class="icon" title="Fit the whole reel in the timeline"><svg class="i"><use href="#i-fit"/></svg></button>
+      <button id="bFit" class="icon" title="Fit the whole video in the timeline"><svg class="i"><use href="#i-fit"/></svg></button>
       <label style="color:var(--muted); font-size:12px; display:flex; gap:6px; align-items:center"><input type="checkbox" id="cResult"> Final render</label>
     </div>
   </section>
@@ -323,7 +323,7 @@ let ops = [], P = null, clip = null;
 function cur(){ return P || D.words; }
 function renderWords(){
   const box = $('#script');
-  if (!D.words || !D.words.length) { box.innerHTML = `<div class="empty"><b>No words yet.</b> Transcribe the clips to get captions and edit the reel by its words.<div class="row" style="margin-top:10px">${capButton()}</div><div class="hint">Same as <kbd>kanton words ${esc(D.name)}</kbd> then <kbd>kanton captions</kbd>.</div></div>`; $('#bApply').disabled = $('#bDiscard').disabled = true; wireCaptions(box); return; }
+  if (!D.words || !D.words.length) { box.innerHTML = `<div class="empty"><b>No words yet.</b> Transcribe the clips to get captions and edit the video by its words.<div class="row" style="margin-top:10px">${capButton()}</div><div class="hint">Same as <kbd>kanton words ${esc(D.name)}</kbd> then <kbd>kanton captions</kbd>.</div></div>`; $('#bApply').disabled = $('#bDiscard').disabled = true; wireCaptions(box); return; }
   const ch = P ? changed() : new Set(), fixed = n => ops.some(o => o.op === 'fix' && o.n === n);
   $('#bApply').textContent = `Apply text (${ops.length})`; $('#bApply').disabled = $('#bDiscard').disabled = !ops.length;
   box.innerHTML = cur().map((e, k) => `<span class="w${e.t === null ? ' cut' : ''}${ch.has(k) || P && fixed(e.n) ? ' chg' : ''}" data-k="${k}" draggable="true">${esc(e.word)}</span>`).join(' ');
@@ -370,9 +370,9 @@ function renderLib(){
       : `<div class="empty"><b>No video yet.</b> Import a clip, or run <kbd>kanton new rush.mp4</kbd>.</div>`;
     const imgs = srcs.filter(([k, s]) => s.kind === 'image');
     if (imgs.length) h += `<h3 style="margin-top:12px">Images</h3>` + imgs.map(([k, s]) => `<div class="item" data-src="${esc(k)}" data-img="1" title="Click: a still of it on the main track at the playhead"><div class="th"><img src="${esc(s.url)}" alt=""></div><div class="nm">${esc(k)}<div class="meta">${s.width}×${s.height}</div></div></div>`).join('');
-    h += `<div class="hint">Clips go to the end of the reel; images become a 3 s still at the playhead. Drag on the timeline to reorder.</div>`;
+    h += `<div class="hint">Clips go to the end of the video; images become a 3 s still at the playhead. Drag on the timeline to reorder.</div>`;
   } else if (tab === 'audio') {
-    h += `<div class="row"><button id="bRec" class="${rec ? 'rec' : ''}" title="Record from the playhead while the reel plays, muted">${rec ? `Stop recording · ${recSecs()} s` : '<svg class="i"><use href="#i-mic"/></svg>Record voiceover'}</button></div>`;
+    h += `<div class="row"><button id="bRec" class="${rec ? 'rec' : ''}" title="Record from the playhead while the video plays, muted">${rec ? `Stop recording · ${recSecs()} s` : '<svg class="i"><use href="#i-mic"/></svg>Record voiceover'}</button></div>`;
     h += `<h3>Music</h3>`;
     h += S.music ? `<div class="item ${sel && sel.kind === 'music' ? 'on' : ''}" data-pick="music"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(S.music.src)}<div class="meta">${S.music.gain_db || 0} dB${S.music.loop ? ' · loop' : ''}${S.music.duck ? ' · ducked' : ''}</div></div></div>` : `<div class="empty">No music. Pick a file below.</div>`;
     h += `<h3 style="margin-top:12px">Sounds</h3>` + ((S.sounds || []).length ? S.sounds.map((m, i) => `<div class="item ${sel && sel.kind === 'sound' && sel.i === i ? 'on' : ''}" data-pick="sound" data-i="${i}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(m.src)}<div class="meta">at ${(m.t || 0).toFixed(2)} s</div></div></div>`).join('') : `<div class="empty">No sound effect or voice-over yet.</div>`);
@@ -382,10 +382,10 @@ function renderLib(){
     h += `<h3>Auto captions</h3><div class="row">${capButton()}</div><div class="hint">Transcribes the clips with no words yet, then writes the captions in the preset's style. Replaces the existing captions.</div>`;
     h += `<h3 style="margin-top:12px">Add a text</h3><div class="chips">` + CAT.roles.map(r => `<span class="chip" data-role="${esc(r)}">${esc(r)}</span>`).join('') + `</div>`;
     h += `<div class="hint">A text lands at the playhead for 1.5 s with the preset style of its role. Captions are rebuilt from the words by <kbd>kanton captions</kbd>.</div>`;
-    h += `<h3 style="margin-top:12px">Texts in the reel</h3>` + (S.texts.length ? S.texts.map((x, i) => `<div class="item ${sel && sel.kind === 'text' && sel.i === i ? 'on' : ''}" data-pick="text" data-i="${i}"><div class="th"><svg class="i"><use href="#i-text"/></svg></div><div class="nm">${esc(x.text).replace(/\n/g, ' / ')}<div class="meta">${esc(x.role || 'caption')} · ${(x.t || 0).toFixed(2)} s</div></div></div>`).join('') : `<div class="empty">No text yet.</div>`);
+    h += `<h3 style="margin-top:12px">Texts in the video</h3>` + (S.texts.length ? S.texts.map((x, i) => `<div class="item ${sel && sel.kind === 'text' && sel.i === i ? 'on' : ''}" data-pick="text" data-i="${i}"><div class="th"><svg class="i"><use href="#i-text"/></svg></div><div class="nm">${esc(x.text).replace(/\n/g, ' / ')}<div class="meta">${esc(x.role || 'caption')} · ${(x.t || 0).toFixed(2)} s</div></div></div>`).join('') : `<div class="empty">No text yet.</div>`);
   } else if (tab === 'stickers') {
     const st = srcs.filter(([k, s]) => s.kind === 'image' || s.has_alpha);
-    h += `<h3>Stickers</h3>` + (st.length ? st.map(([k, s]) => `<div class="item" data-stk="${esc(k)}" title="Click: add it over the reel at the playhead"><div class="th">${s.kind === 'image' ? `<img src="${esc(s.url)}" alt="">` : `<svg class="i"><use href="#i-sticker"/></svg>`}</div><div class="nm">${esc(k)}<div class="meta">${s.kind === 'image' ? 'image' : 'video with alpha'}</div></div></div>`).join('') : `<div class="empty"><b>No sticker yet.</b> Import a PNG, a GIF or a ProRes 4444 clip from Media.</div>`);
+    h += `<h3>Stickers</h3>` + (st.length ? st.map(([k, s]) => `<div class="item" data-stk="${esc(k)}" title="Click: add it over the video at the playhead"><div class="th">${s.kind === 'image' ? `<img src="${esc(s.url)}" alt="">` : `<svg class="i"><use href="#i-sticker"/></svg>`}</div><div class="nm">${esc(k)}<div class="meta">${s.kind === 'image' ? 'image' : 'video with alpha'}</div></div></div>`).join('') : `<div class="empty"><b>No sticker yet.</b> Import a PNG, a GIF or a ProRes 4444 clip from Media.</div>`);
     const vids = srcs.filter(([k, s]) => s.kind === 'video' && !s.has_alpha);
     if (vids.length) h += `<h3 style="margin-top:12px">B-roll (picture in picture)</h3>` + vids.map(([k, s]) => `<div class="item" data-pip="${esc(k)}" title="Click: a picture-in-picture box of it at the playhead"><div class="th"><svg class="i"><use href="#i-media"/></svg></div><div class="nm">${esc(k)}<div class="meta">${fmtDur(s.duration)}</div></div></div>`).join('');
   } else if (tab === 'effects') {
@@ -396,13 +396,13 @@ function renderLib(){
     h += `<div class="f cols"><div><label>Duration (s)</label><input id="trDur" type="number" step="0.1" min="0.1" value="${b && b.cut_dur != null ? b.cut_dur : CAT.transition_duration}"></div></div>`;
     h += `<div class="chips"><span class="chip ${curCut === 'none' ? 'on' : ''}" data-cut="none">none</span>` + CAT.transitions.map(x => `<span class="chip ${curCut === x ? 'on' : ''}" data-cut="${esc(x)}">${esc(x)}</span>`).join('') + `</div>`;
   } else if (tab === 'filters') {
-    const b = sel && sel.kind === 'block' ? S.blocks[sel.i] : null, target = b ? `clip ${sel.i + 1}` : 'the whole reel', g = b ? b.grade : S.grade, name = typeof g === 'string' ? g : (g && g.filter) || '';
-    h += `<h3>Filters</h3><div class="hint">Click: ${esc(target)}${b ? '. ⇧click: the whole reel' : ''}. Values are a hypothesis to judge on the export.</div>`;
+    const b = sel && sel.kind === 'block' ? S.blocks[sel.i] : null, target = b ? `clip ${sel.i + 1}` : 'the whole video', g = b ? b.grade : S.grade, name = typeof g === 'string' ? g : (g && g.filter) || '';
+    h += `<h3>Filters</h3><div class="hint">Click: ${esc(target)}${b ? '. ⇧click: the whole video' : ''}. Values are a hypothesis to judge on the export.</div>`;
     h += `<div class="f"><label>Intensity <output id="intOut">${g && g.intensity != null ? g.intensity : 1}</output></label><input id="intensity" type="range" min="0" max="1" step="0.05" value="${g && g.intensity != null ? g.intensity : 1}"></div>`;
     h += `<div class="looks"><div class="look ${!name ? 'on' : ''}" data-look=""><div class="sw"></div>none</div>` + CAT.filters.map(f => `<div class="look ${name === f ? 'on' : ''}" data-look="${esc(f)}"><div class="sw" style="filter:${cssFilter(CAT.looks[f] || {})}"></div>${esc(f)}</div>`).join('') + `</div>`;
   } else if (tab === 'adjust') {
     const g = typeof S.grade === 'string' ? { filter: S.grade } : (S.grade || {});
-    h += `<h3>Adjust (whole reel)</h3><div class="hint">The preview is an approximation; the export is the reference. Values are a hypothesis.</div><div class="adj">`;
+    h += `<h3>Adjust (whole video)</h3><div class="hint">The preview is an approximation; the export is the reference. Values are a hypothesis.</div><div class="adj">`;
     for (const [k, lo, hi, step] of ADJ) h += `<label>${k}<output>${g[k] != null ? g[k] : NEUTRAL[k]}</output></label><input type="range" data-adj="${k}" min="${lo}" max="${hi}" step="${step}" value="${g[k] != null ? g[k] : NEUTRAL[k]}">`;
     h += `</div><div class="row" style="margin-top:10px"><button id="bAdjReset">Reset</button></div>`;
   } else if (tab === 'agent') {
@@ -456,7 +456,7 @@ async function importSrt(file){
   const srcs = [...new Set((S.blocks || []).map(b => b.src))];
   let src;
   if (srcs.length > 1) {                              // several sources: the .srt belongs to one of them
-    const a = prompt('This reel uses several sources. Which one does the .srt belong to?\n\n' + srcs.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\nType its number or name:', '1');
+    const a = prompt('This video uses several sources. Which one does the .srt belong to?\n\n' + srcs.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\nType its number or name:', '1');
     if (a === null) return;
     src = srcs[parseInt(a, 10) - 1] || srcs.find(s => s === a.trim());
     if (!src) { setStatus('✗ Unknown source: ' + a, true); return; }
@@ -762,7 +762,7 @@ function inspect(){
       + `<div class="cols">${F('Mirror', 'flip', !!it.flip, 'check')}${F('Upside down', 'vflip', !!it.vflip, 'check')}${still ? '' : F('Stabilize', 'stabilize', !!it.stabilize, 'check')}</div>`);
     const cut = it.cut ? (typeof it.cut === 'string' ? it.cut : it.cut.type) : 'none';
     h += G('Transition', i === 0 ? `<div class="hint">The first clip has no cut before it.</div>` : `<div class="cols">${F('Into this clip', 'cut', cut, 'select', ['none', ...CAT.transitions])}${F('Duration (s)', 'cut_dur', it.cut_dur != null ? it.cut_dur : CAT.transition_duration, 'num')}</div>`, cut !== 'none');
-    h += G('Look', `<div class="cols">${F('Filter', 'grade_filter', gname, 'select', [['', 'none'], ...CAT.filters])}${F('Intensity', 'grade_intensity', gv.intensity != null ? gv.intensity : 1, 'num')}</div>` + `<div class="cols">${F('Contrast', 'grade.contrast', gv.contrast, 'num')}${F('Saturation', 'grade.saturation', gv.saturation, 'num')}${F('Temperature', 'grade.temperature', gv.temperature, 'num')}</div><div class="hint">More keys in Adjust (whole reel) or in the file. A look is a hypothesis.</div>`, !!g);
+    h += G('Look', `<div class="cols">${F('Filter', 'grade_filter', gname, 'select', [['', 'none'], ...CAT.filters])}${F('Intensity', 'grade_intensity', gv.intensity != null ? gv.intensity : 1, 'num')}</div>` + `<div class="cols">${F('Contrast', 'grade.contrast', gv.contrast, 'num')}${F('Saturation', 'grade.saturation', gv.saturation, 'num')}${F('Temperature', 'grade.temperature', gv.temperature, 'num')}</div><div class="hint">More keys in Adjust (whole video) or in the file. A look is a hypothesis.</div>`, !!g);
     h += G('Sound', still ? `<div class="hint">A still is silent.</div>` : `<div class="cols">${F('Mute', 'mute', !!it.mute, 'check')}${F('Volume (dB)', 'volume', it.volume || 0, 'num')}</div><div class="cols">${F('Fade in (s)', 'fade_in', it.fade_in || 0, 'num')}${F('Fade out (s)', 'fade_out', it.fade_out || 0, 'num')}</div><div class="cols">${F('Denoise', 'denoise', !!it.denoise, 'check')}${F('Pitch (semitones)', 'pitch', it.pitch || 0, 'num')}</div>${F('Voice effect', 'voice', it.voice || '', 'select', [['', 'none'], ...(CAT.voices || [])])}`, !!(it.mute || it.volume || it.voice || it.denoise || it.pitch));
     h += G('Effects on this clip', `<div class="chips">` + CAT.effects.map(e => `<span class="chip ${(it.effects || []).some(x => x.type === e) ? 'on' : ''}" data-bfx="${esc(e)}">${esc(e.replace(/_/g, ' '))}</span>`).join('') + `</div><div class="hint">Toggled effects run over the whole clip. Timed effects live on the Effects lane.</div>`, !!(it.effects && it.effects.length));
   } else if (K === 'overlay') {
@@ -790,7 +790,7 @@ function inspect(){
     h += G('Animation', animSel('In', 'anim_in', it.anim_in, 'in') + animSel('Out', 'anim_out', it.anim_out, 'out') + animSel('Loop', 'anim_loop', it.anim_loop, 'loop'), !!(it.anim_in || it.anim_out || it.anim_loop));
     h += G('Keyframes', kfTable(it), !!(it.keyframes && it.keyframes.length));
   } else if (K === 'music' || K === 'sound') {
-    h += G('Sound', F('File', 'src', it.src, 'select', srcs.includes(it.src) ? srcs : srcs.concat([it.src])) + `<div class="cols">${F('Trim start (s)', 'in', it.in || 0, 'num')}${F('Start in reel (s)', 't', it.t || 0, 'num')}${F('Duration (s, empty = to the end)', 'dur', it.dur, 'num')}</div>`
+    h += G('Sound', F('File', 'src', it.src, 'select', srcs.includes(it.src) ? srcs : srcs.concat([it.src])) + `<div class="cols">${F('Trim start (s)', 'in', it.in || 0, 'num')}${F('Start in video (s)', 't', it.t || 0, 'num')}${F('Duration (s, empty = to the end)', 'dur', it.dur, 'num')}</div>`
       + `<div class="cols">${F('Gain (dB)', 'gain_db', it.gain_db || 0, 'num')}${F('Pitch (semitones)', 'pitch', it.pitch || 0, 'num')}</div><div class="cols">${F('Fade in (s)', 'fade_in', it.fade_in || 0, 'num')}${F('Fade out (s)', 'fade_out', it.fade_out || 0, 'num')}</div>`
       + `<div class="cols">${F('Loop', 'loop', !!it.loop, 'check')}${K === 'music' ? F('Duck under the voice', 'duck_on', !!it.duck, 'check') : ''}</div>` + F('Voice effect', 'voice', it.voice || '', 'select', [['', 'none'], ...(CAT.voices || [])])
       + (K === 'music' && it.duck && typeof it.duck === 'object' ? `<div class="sub"><div class="cols">${F('Threshold', 'duck.threshold', it.duck.threshold != null ? it.duck.threshold : 0.02, 'num')}${F('Ratio', 'duck.ratio', it.duck.ratio != null ? it.duck.ratio : 6, 'num')}</div><div class="cols">${F('Attack (ms)', 'duck.attack', it.duck.attack != null ? it.duck.attack : 80, 'num')}${F('Release (ms)', 'duck.release', it.duck.release != null ? it.duck.release : 500, 'num')}</div></div>` : ''));
@@ -831,7 +831,7 @@ function speedPanel(it, i){
       + (curve && !named ? `<div class="cv on"><svg viewBox="0 0 64 34">${miniCurve(curve)}</svg>custom</div>` : '') + `</div>`;
     h += curve ? `<svg id="curveEd" viewBox="0 0 ${CW} ${CH}" role="img" aria-label="Speed curve"></svg><div class="hint">Drag a point. Double-click to add one, or to remove it. Named curves are a hypothesis.</div>` : `<div class="hint">Pick a curve: the clip speeds up and slows down along it.</div>`;
   }
-  h += `<div class="hint" id="spdOut">${(b.out - b.in).toFixed(2)} s of source → ${b.dur.toFixed(2)} s in the reel</div>` + F('Smooth slow motion (export only)', 'smooth', !!it.smooth, 'check');
+  h += `<div class="hint" id="spdOut">${(b.out - b.in).toFixed(2)} s of source → ${b.dur.toFixed(2)} s in the video</div>` + F('Smooth slow motion (export only)', 'smooth', !!it.smooth, 'check');
   return h;
 }
 function curveEditor(it){
@@ -839,7 +839,7 @@ function curveEditor(it){
   const paint = () => { svg.innerHTML = [0.1, 1, 10].map(v => `<line x1="${CP}" x2="${CW - CR}" y1="${cY(v)}" y2="${cY(v)}"/><text x="${CW - 4}" y="${cY(v) + 3}" text-anchor="end">${v}×</text>`).join('')
     + `<polyline points="${pts.map(([p, v]) => `${cX(p)},${cY(v)}`).join(' ')}"/>` + pts.map(([p, v], k) => `<circle cx="${cX(p)}" cy="${cY(v)}" r="5.5" data-k="${k}"><title>${v.toFixed(2)}×</title></circle>`).join(''); };
   const local = ev => { const r = svg.getBoundingClientRect(); return [(ev.clientX - r.left) * CW / r.width, (ev.clientY - r.top) * CH / r.height]; };
-  const put = (coalesce) => { it.speed = pts.map(([p, v]) => [+p.toFixed(3), +v.toFixed(2)]); recompute(); draw(); paint(); markDirty(coalesce); const b = T.blocks[i]; $('#spdOut').textContent = `${(b.out - b.in).toFixed(2)} s of source → ${b.dur.toFixed(2)} s in the reel`; };
+  const put = (coalesce) => { it.speed = pts.map(([p, v]) => [+p.toFixed(3), +v.toFixed(2)]); recompute(); draw(); paint(); markDirty(coalesce); const b = T.blocks[i]; $('#spdOut').textContent = `${(b.out - b.in).toFixed(2)} s of source → ${b.dur.toFixed(2)} s in the video`; };
   svg.onpointerdown = ev => {
     const c = ev.target.closest('circle'); if (!c) return; ev.preventDefault(); svg.setPointerCapture(ev.pointerId);
     const k = +c.dataset.k, old = T.blocks, x0 = ev.clientX, y0 = ev.clientY; let moved = false;
