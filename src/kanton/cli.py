@@ -114,9 +114,15 @@ def cmd_transcribe(a):
 def cmd_captions(a):
     from .captions import apply_captions
     spec = _spec(a.spec)
-    words = {**(spec.data.get("words") or {}), **_parse_words_args(a.words)}
+    given = _parse_words_args(a.words)                           # .srt / words JSON brought by the user: they replace the transcript
+    stored_words = spec.data.get("words") or {}
+    spec.data["words"] = stored_words
+    if given:
+        stored_words.update(given)
+    words = dict(stored_words)
     for src in sorted({b["src"] for b in spec.blocks}):
-        if src not in words:
+        if src not in given and (a.force or src not in words):   # --force: transcribe again even if the spec already holds words
+            stored_words.pop(src, None)                          # the old transcript no longer matches the captions
             words[src] = words_for(spec, src, a.backend, a.python, a.lang, force=a.force)
     n = apply_captions(spec, words)
     spec.save()
@@ -257,7 +263,7 @@ def main(argv: list[str] | None = None):
     p.add_argument("-o", "--out"); p.add_argument("--text", action="store_true", help="also print the text"); whisper_opts(p)
     p = add("captions", cmd_captions, "write the caption texts of a spec from the transcription of its sources")
     p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON or .srt per source (skips transcription)")
-    p.add_argument("--force", action="store_true", help="transcribe again even if cached"); whisper_opts(p)
+    p.add_argument("--force", action="store_true", help="transcribe again even if cached or already in the spec"); whisper_opts(p)
     p = add("words", cmd_words, "edit by the words: print them numbered ([n:cut], n@2: played a second time), cut / keep / move / copy / fix "
                                 "(transcribes once into the spec)")
     p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON or .srt per source (skips transcription)")
