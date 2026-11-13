@@ -6,8 +6,8 @@ PUT  /api/spec    validate + save (400 with the message when the spec is invalid
                   X-Version is older than the file: another process wrote it since the page loaded it)
 GET  /api/version {"version"}: the file's mtime as loaded. The file is the truth: /api/spec and /api/version reload it
                   when it changed on disk (an agent at work); the page polls /api/version
-POST /api/chat    {"text"}: one turn of the agent (`claude -p` in the spec's folder, KANTON_CLAUDE or the PATH), its reply
-                  appended as it streams; GET /api/chat reports {"status", "messages", "session", "error"}
+POST /api/chat    {"text"}: one turn of the agent, its reply appended as it streams. Default: a token (KANTON_AGENT_TOKEN, see
+                  agent.py); KANTON_AGENT=cli: `claude -p` (KANTON_CLAUDE or the PATH) or any command (KANTON_AGENT_CMD); GET /api/chat reports {"status", "messages", "session", "error"}
 GET  /api/model   the app's speech model (faster-whisper): {"managed", "model", "present", "bytes", "size", "path", "status"...};
                   POST starts its download once (the page asks first), GET reports the bytes landed;
                   POST {"path"} adopts a model folder already on the disk, after checking it is the right model
@@ -37,6 +37,7 @@ import math
 import mimetypes
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -47,7 +48,7 @@ from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .. import beats, ffmpeg, fx, transcribe, words
+from .. import agent, beats, ffmpeg, fx, transcribe, words
 from .. import speed as ramp
 from ..captions import apply_captions
 from ..render import atempo
@@ -333,6 +334,11 @@ def claude_binary() -> str | None:
     return p if p and Path(p).exists() else None
 
 
+def agent_mode() -> str:
+    """"token" (default), or "cli": KANTON_AGENT, else "cli" when KANTON_AGENT_CMD is set."""
+    return os.environ.get("KANTON_AGENT") or ("cli" if os.environ.get("KANTON_AGENT_CMD") else "token")
+
+
 def _tool_line(inp: dict) -> str:
     return str(inp.get("command") or inp.get("file_path") or inp.get("pattern") or json.dumps(inp))[:160]
 
@@ -353,6 +359,7 @@ class State:
         self.export = {"status": "idle", "file": None, "error": None}
         self.captions = {"status": "idle", "error": None}
         self.chat = {"status": "idle", "messages": [], "session": None, "error": None}
+        self.history: list = []              # the token agent's conversation, in its provider's format
         self.model = {"status": "idle", "error": None}
         self.model_size = "?"                           # fetched from the Hub once
         self.segs = {}                                  # key → the build of a block's pieces (a future)
@@ -461,14 +468,58 @@ class State:
                 return 409
             if self.spec is None or not text.strip():
                 return 400
-            exe = claude_binary()
-            if not exe:
-                self.chat = {**self.chat, "status": "error", "error": "claude not found: install Claude Code, or set KANTON_CLAUDE to the binary"}
+            mode, custom = agent_mode(), os.environ.get("KANTON_AGENT_CMD")
+            exe = None if mode == "token" or custom else claude_binary()
+            fail = None
+            if mode not in ("token", "cli"):
+                fail = f"KANTON_AGENT must be token or cli, not {mode!r}"
+            elif mode == "token":
+                try:
+                    agent.config()
+                except agent.AgentError as e:
+                    fail = str(e)
+            elif not exe and not custom:
+                fail = "claude not found: install Claude Code, set KANTON_CLAUDE to the binary, or set KANTON_AGENT_CMD to another agent's command"
+            if fail:
+                self.chat = {**self.chat, "status": "error", "error": fail}
                 return 200
             self.chat = {**self.chat, "status": "running", "error": None, "messages": self.chat["messages"] + [{"role": "user", "text": text}]}
             spec, session = self.spec, self.chat["session"]
+        system = f"You are editing {spec.path} with the kanton CLI; the editor shows the file and reloads it after each change."
+        if mode == "token":
+            def say(role, t):
+                with self.lock:
+                    self.chat["messages"].append({"role": role, "text": t})
+
+            def go_token():
+                err = None
+                try:
+                    agent.turn(self.history, text, system, spec.dir, say)
+                except BaseException as e:
+                    err = str(e) or type(e).__name__
+                with self.lock:
+                    self.chat = {**self.chat, "status": "error" if err else "done", "error": err and err[-2000:]}
+            threading.Thread(target=go_token, daemon=True).start()
+            return 200
+        if custom:                           # another agent's command: the message is its last argument, its stdout the reply
+            def go_cmd():
+                err = None
+                try:
+                    pr = subprocess.Popen(shlex.split(custom) + [text], cwd=spec.dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                    for line in pr.stdout:
+                        if line.strip():
+                            with self.lock:
+                                self.chat["messages"].append({"role": "assistant", "text": line.rstrip()})
+                    if pr.wait():
+                        err = f"{shlex.split(custom)[0]} exited with {pr.returncode}"
+                except BaseException as e:
+                    err = str(e)
+                with self.lock:
+                    self.chat = {**self.chat, "status": "error" if err else "done", "error": err}
+            threading.Thread(target=go_cmd, daemon=True).start()
+            return 200
         cmd = [exe, "-p", text, "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--allowedTools", "Bash(kanton:*)",
-               "--append-system-prompt", f"You are editing {spec.path} with the kanton CLI; the editor shows the file and reloads it after each change."]
+               "--append-system-prompt", system]
         if session:
             cmd += ["--resume", session]
 

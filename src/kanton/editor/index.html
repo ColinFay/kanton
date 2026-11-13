@@ -406,7 +406,7 @@ function renderLib(){
     for (const [k, lo, hi, step] of ADJ) h += `<label>${k}<output>${g[k] != null ? g[k] : NEUTRAL[k]}</output></label><input type="range" data-adj="${k}" min="${lo}" max="${hi}" step="${step}" value="${g[k] != null ? g[k] : NEUTRAL[k]}">`;
     h += `</div><div class="row" style="margin-top:10px"><button id="bAdjReset">Reset</button></div>`;
   } else if (tab === 'agent') {
-    h += `<h3>Agent</h3><div class="hint">Claude Code, run in this project's folder: it edits ${esc(D.name)} and the page follows the file.</div><div id="chat"></div><textarea id="chatIn" rows="3" placeholder="Ask for a change — ⌘⏎ sends"></textarea><div class="row"><button id="bChat" class="primary">Send</button></div>`;
+    h += `<h3>Agent</h3><div class="hint">An agent, run in this project's folder (a token by default, or a command-line agent): it edits ${esc(D.name)} and the page follows the file.</div><div id="chat"></div><textarea id="chatIn" rows="3" placeholder="Ask for a change — ⌘⏎ sends"></textarea><div class="row"><button id="bChat" class="primary">Send</button></div>`;
   }
   lib.innerHTML = h;
   if (tab === 'agent') { paintChat(); $('#bChat').onclick = sendChat; $('#chatIn').onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat(); } }; }

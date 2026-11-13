@@ -183,6 +183,20 @@ the model (once, kept in the Hugging Face cache or `KANTON_MODEL_DIR`), or lets 
 - ffmpeg does the pixels. kanton composes filtergraphs; it has no codec, no renderer, no proxy system.
 - Standalone: Python ≥ 3.10, Pillow, ffmpeg. No brand value in the code: looks and rules live in presets.
 
+## Agent in the editor
+
+The editor's Agent tab talks to an agent that edits the spec file. Default: a **token**, no CLI to install.
+
+| Variable | Meaning |
+|---|---|
+| `KANTON_AGENT_TOKEN` | the token (else `ANTHROPIC_API_KEY`, else `OPENAI_API_KEY`) |
+| `KANTON_AGENT_API` | `anthropic` (default) or `openai` (OpenAI and compatible servers) |
+| `KANTON_AGENT_URL`, `KANTON_AGENT_MODEL` | base URL and model, defaults per API |
+| `KANTON_AGENT=cli` | command-line agent instead: `claude -p` (`KANTON_CLAUDE` or the PATH) |
+| `KANTON_AGENT_CMD` | any other agent's command (implies `cli`): the message is its last argument, its stdout the reply |
+
+The token agent has three tools: `kanton`, `read_file`, `write_file` (the last two stay in the spec's folder).
+
 ## Desktop app
 
 `kanton.app` is the same code in a native window (pywebview), with ffmpeg inside: no Python, no Homebrew needed
