@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -203,7 +204,39 @@ def transcribe(path: str, start: float = 0.0, end: float | None = None, backend:
     return out
 
 
+_SRT_TIME = re.compile(r"(?:(\d+):)?(\d+):(\d+)[,.](\d{1,3})\s*-->\s*(?:(\d+):)?(\d+):(\d+)[,.](\d{1,3})")
+
+
+def words_from_srt(text: str) -> list[dict]:
+    """Words with times from SubRip text. A cue's words share its time span in proportion to their length
+    (an .srt carries no word times); the cue's start and end are exact."""
+    def secs(h, m, s, ms):
+        return int(h or 0) * 3600 + int(m) * 60 + int(s) + int(ms.ljust(3, "0")) / 1000
+    out: list[dict] = []
+    for block in re.split(r"\n\s*\n", text.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")):
+        lines = block.strip().split("\n")
+        i = next((k for k, ln in enumerate(lines) if _SRT_TIME.search(ln)), None)
+        if i is None:
+            continue
+        g = _SRT_TIME.search(lines[i]).groups()
+        t0, t1 = secs(*g[:4]), secs(*g[4:])
+        toks = re.sub(r"<[^>]+>|\{\\[^}]*\}", "", " ".join(lines[i + 1:])).split()
+        if not toks or t1 <= t0:
+            continue
+        total = sum(len(w) + 1 for w in toks)
+        t = t0
+        for w in toks:
+            e = t + (t1 - t0) * (len(w) + 1) / total
+            out.append({"word": w, "start": t, "end": e})
+            t = e
+        out[-1]["end"] = t1
+    out.sort(key=lambda w: w["start"])
+    return out
+
+
 def words_from_json(path: str | Path) -> list[dict]:
+    if str(path).lower().endswith(".srt"):
+        return words_from_srt(Path(path).read_text(encoding="utf-8-sig", errors="replace"))
     d = json.loads(Path(path).read_text(encoding="utf-8"))
     if isinstance(d, dict) and "segments" in d:
         words = [w for s in d["segments"] for w in s.get("words", [])]

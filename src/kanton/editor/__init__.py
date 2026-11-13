@@ -421,7 +421,7 @@ class State:
                     setattr(self, job, {"status": "error", "file": None, "error": friendly(str(e))[-2000:]})
         threading.Thread(target=go, daemon=True).start()
 
-    def start_captions(self, lang: str):
+    def start_captions(self, lang: str, srt: str | None = None, src: str | None = None):
         """Transcribe the clips that have no words yet into the saved spec, then rebuild its captions."""
         with self.lock:
             if self.captions["status"] == "running" or self.spec is None:
@@ -432,7 +432,18 @@ class State:
         def go():
             try:
                 spec = Spec.load(path)
-                n = apply_captions(spec, words.transcribe_missing(spec, language=lang))
+                if srt is not None:               # an .srt the user brought: its cues become the words, no transcription
+                    srcs = sorted({b["src"] for b in spec.blocks})
+                    if src is None and len(srcs) != 1:
+                        sys.exit(f"kanton: the reel uses {len(srcs)} sources; say which one the .srt belongs to ({', '.join(srcs)})")
+                    target = src or srcs[0]
+                    if target not in srcs:
+                        sys.exit(f"kanton: no source {target!r} in the blocks")
+                    ws = transcribe.words_from_srt(srt)
+                    if not ws:
+                        sys.exit("kanton: no cue found in that .srt")
+                    spec.data.setdefault("words", {})[target] = ws
+                n = apply_captions(spec, spec.data.get("words", {}) if srt is not None else words.transcribe_missing(spec, language=lang))
                 spec.save()
                 with self.lock:
                     self.adopt(Spec.load(path))
@@ -756,7 +767,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(code, {**st.chat, **({"error": _CHAT_ERR[code]} if code in _CHAT_ERR else {})})
         if p == "/api/captions":
             n = int(self.headers.get("Content-Length") or 0)
-            st.start_captions((json.loads(self.rfile.read(n) or b"{}").get("lang") or "fr"))
+            body = json.loads(self.rfile.read(n) or b"{}")
+            st.start_captions(body.get("lang") or "fr", srt=body.get("srt"), src=body.get("src"))
             with st.lock:
                 return self._json(200, dict(st.captions))
         if p not in ("/api/render", "/api/export"):
