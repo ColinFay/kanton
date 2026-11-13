@@ -111,3 +111,9 @@ def rms_db(path, start: float, end: float) -> float:
     err = subprocess.run(args, capture_output=True, text=True).stderr
     m = re.findall(r"RMS level dB: (-?[\d.]+|-inf)", err)
     return float("-inf") if not m or m[-1] == "-inf" else float(m[-1])
+
+
+@pytest.fixture(autouse=True)
+def _kanton_home(tmp_path_factory, monkeypatch):
+    """Settings and the recent list never touch the real user config."""
+    monkeypatch.setenv("KANTON_HOME", str(tmp_path_factory.mktemp("kanton-home")))
