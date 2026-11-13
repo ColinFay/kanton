@@ -121,7 +121,7 @@
   #wait .spin { width:28px; height:28px; border-width:3px; margin:0 0 14px } #wait { flex-direction:column } @keyframes spin { to { transform:rotate(360deg) } }
   #chat { display:flex; flex-direction:column; gap:6px; max-height:50vh; overflow:auto; margin:8px 0 } .msg { padding:6px 8px; border-radius:var(--r); font-size:13px; white-space:pre-wrap; word-break:break-word }
   .msg.user { background:#262933; align-self:flex-end } .msg.assistant { background:var(--panel) } .msg.tool { color:var(--muted); font-size:11px } .msg.err { color:var(--err) } .msg.wait { color:var(--dim) }
-  #chatIn { width:100%; box-sizing:border-box; resize:vertical; margin-bottom:8px }
+  #chatIn { width:100%; box-sizing:border-box; resize:vertical; margin-bottom:8px; font:inherit }
   dialog { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:18px 20px; max-width:440px; font-size:13px } dialog::backdrop { background:rgba(0,0,0,.55) }
   dialog h3 { margin:0 0 10px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted) } dialog p { margin:0; line-height:1.45 }
 </style>
