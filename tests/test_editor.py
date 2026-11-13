@@ -242,6 +242,23 @@ def test_import_copies_the_file_next_to_the_spec_and_adds_a_source(server, media
     assert j["sources"]["logo"]["kind"] == "image"
 
 
+def test_import_accepts_an_audio_only_file(server, media):
+    body = Path(media["music"]).read_bytes()
+    boundary = b"----kanton"
+    data = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"my song.wav\"\r\nContent-Type: audio/wav\r\n\r\n" + body
+            + b"\r\n--" + boundary + b"--\r\n")
+    req = urllib.request.Request(server["url"] + "/api/import", data=data, method="POST", headers={"Content-Type": "multipart/form-data; boundary=" + boundary.decode()})
+    with urllib.request.urlopen(req) as r:
+        j = json.loads(r.read())
+    s = j["sources"][j["key"]]
+    assert s["kind"] == "audio" and s["has_audio"] and s["duration"] > 9
+
+
+def test_audio_tab_has_an_import_button():
+    html = (Path(editor.__file__).parent / "index.html").read_text()
+    assert 'id="bImportAudio"' in html and 'id="audIn"' in html and 'accept="audio/*' in html
+
+
 def test_player_pieces_follow_stills_reverse_rotation_and_fit(media, spec_file):
     """The page plays what the server cut: a frozen frame stays put, a reversed block runs backwards, a rotated or letterboxed
     block keeps its geometry (the page only adds zoom, flip and the layers)."""
