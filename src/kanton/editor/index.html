@@ -402,7 +402,7 @@ function renderLib(){
     h += `<div class="looks"><div class="look ${!name ? 'on' : ''}" data-look=""><div class="sw"></div>none</div>` + CAT.filters.map(f => `<div class="look ${name === f ? 'on' : ''}" data-look="${esc(f)}"><div class="sw" style="filter:${cssFilter(CAT.looks[f] || {})}"></div>${esc(f)}</div>`).join('') + `</div>`;
   } else if (tab === 'adjust') {
     const g = typeof S.grade === 'string' ? { filter: S.grade } : (S.grade || {});
-    h += `<h3>Adjust (whole reel)</h3><div class="hint">Preview is a CSS approximation; the export uses ffmpeg. Values are a hypothesis.</div><div class="adj">`;
+    h += `<h3>Adjust (whole reel)</h3><div class="hint">The preview is an approximation; the export is the reference. Values are a hypothesis.</div><div class="adj">`;
     for (const [k, lo, hi, step] of ADJ) h += `<label>${k}<output>${g[k] != null ? g[k] : NEUTRAL[k]}</output></label><input type="range" data-adj="${k}" min="${lo}" max="${hi}" step="${step}" value="${g[k] != null ? g[k] : NEUTRAL[k]}">`;
     h += `</div><div class="row" style="margin-top:10px"><button id="bAdjReset">Reset</button></div>`;
   } else if (tab === 'agent') {
