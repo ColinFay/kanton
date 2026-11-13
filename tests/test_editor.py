@@ -63,6 +63,15 @@ def test_index_page(server):
         assert lane in body
 
 
+def test_media_can_be_renamed_without_losing_source_references():
+    body = (Path(__file__).parents[1] / "src/kanton/editor/index.html").read_text()
+    assert 'data-rename="${esc(k)}"' in body
+    assert "function renameSource(oldKey)" in body
+    for ref in ("S.blocks", "S.blocks_raw", "S.overlays", "S.sounds", "S.music", "S.words"):
+        assert ref in body
+    assert 'already exists' in body and "markDirty(); draw(); renderLib()" in body
+
+
 def test_get_spec_with_timeline(server):
     st, _, body = get(server["url"] + "/api/spec")
     d = json.loads(body)
