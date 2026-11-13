@@ -112,6 +112,7 @@ def test_the_page_has_the_agent_tab(server):
     with urllib.request.urlopen(server["url"] + "/") as r:
         body = r.read()
     assert b'data-tab="agent"' in body and b"/api/chat" in body
+    assert b"#chatIn { width:100%; box-sizing:border-box; resize:vertical; margin-bottom:8px; font-family:inherit }" in body
 
 
 # ---- the default agent: a token (a fake API on localhost) ----
