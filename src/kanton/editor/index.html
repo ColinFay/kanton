@@ -177,7 +177,8 @@
 <main>
   <section id="library">
     <nav id="tabs">
-      <button data-tab="media" class="on"><svg class="i"><use href="#i-media"/></svg>Media</button>
+      <button data-tab="agent" class="on"><svg class="i"><use href="#i-agent"/></svg>Agent</button>
+      <button data-tab="media"><svg class="i"><use href="#i-media"/></svg>Media</button>
       <button data-tab="audio"><svg class="i"><use href="#i-audio"/></svg>Audio</button>
       <button data-tab="text"><svg class="i"><use href="#i-text"/></svg>Text</button>
       <button data-tab="stickers"><svg class="i"><use href="#i-sticker"/></svg>Stickers</button>
@@ -185,7 +186,6 @@
       <button data-tab="transitions"><svg class="i"><use href="#i-trans"/></svg>Transitions</button>
       <button data-tab="filters"><svg class="i"><use href="#i-filter"/></svg>Filters</button>
       <button data-tab="adjust"><svg class="i"><use href="#i-adjust"/></svg>Adjust</button>
-      <button data-tab="agent"><svg class="i"><use href="#i-agent"/></svg>Agent</button>
     </nav>
     <div id="lib"></div>
     <input type="file" id="fileIn" style="display:none" multiple>
@@ -228,7 +228,7 @@ let T = null;            // derived timeline (recomputed locally)
 let sel = null;          // {kind:'block'|'text'|'overlay'|'music'|'sound'|'effect'|'marker', i}
 let wsel = null;         // selected words {anchor, a, b}
 let pxs = 80;            // pixels per second
-let t = 0, playing = false, resultMode = false, dirty = false, tab = 'media', snapOn = true;
+let t = 0, playing = false, resultMode = false, dirty = false, tab = 'agent', snapOn = true;
 let CAT = { transitions: [], effects: [], filters: [], looks: {}, blends: [], masks: [], animations: { in: [], out: [], loop: [] }, grade: [], roles: ['caption', 'title'], transition_duration: 0.3 };
 const video = $('#v');
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
