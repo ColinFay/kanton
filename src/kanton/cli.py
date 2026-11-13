@@ -256,11 +256,11 @@ def main(argv: list[str] | None = None):
     p.add_argument("media"); p.add_argument("--from", dest="start", type=float, default=0.0); p.add_argument("--to", dest="end", type=float)
     p.add_argument("-o", "--out"); p.add_argument("--text", action="store_true", help="also print the text"); whisper_opts(p)
     p = add("captions", cmd_captions, "write the caption texts of a spec from the transcription of its sources")
-    p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON per source (skips transcription)")
+    p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON or .srt per source (skips transcription)")
     p.add_argument("--force", action="store_true", help="transcribe again even if cached"); whisper_opts(p)
     p = add("words", cmd_words, "edit by the words: print them numbered ([n:cut], n@2: played a second time), cut / keep / move / copy / fix "
                                 "(transcribes once into the spec)")
-    p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON per source (skips transcription)")
+    p.add_argument("spec"); p.add_argument("--words", nargs="*", metavar="SRC=FILE", help="words JSON or .srt per source (skips transcription)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--cut", metavar="A-B[@K]", help="@K: the K-th time the words are played (default 1)")
     g.add_argument("--keep", metavar="A-B[@K]", help="put cut words back where the reel skips them")

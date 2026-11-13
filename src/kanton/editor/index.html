@@ -431,8 +431,8 @@ function renderLib(){
 }
 const LANGS = [['fr', 'French'], ['en', 'English'], ['es', 'Spanish'], ['de', 'German'], ['it', 'Italian'], ['pt', 'Portuguese'], ['nl', 'Dutch']];
 let capLang = 'fr', capBusy = false;
-function capButton(){ return `<button data-cap="1" ${capBusy ? 'disabled' : ''}><svg class="i"><use href="#i-cc"/></svg>${capBusy ? 'Transcribing…' : 'Auto captions'}</button><select data-caplang="1" title="Language spoken in the clips" style="flex:none;width:88px">${LANGS.map(([k, n]) => `<option value="${k}" ${k === capLang ? 'selected' : ''}>${n}</option>`).join('')}</select>`; }
-function wireCaptions(root){ root.querySelectorAll('[data-cap]').forEach(e => e.onclick = autoCaptions); root.querySelectorAll('[data-caplang]').forEach(e => e.onchange = () => { capLang = e.value; }); }
+function capButton(){ return `<button data-cap="1" ${capBusy ? 'disabled' : ''}><svg class="i"><use href="#i-cc"/></svg>${capBusy ? 'Transcribing…' : 'Auto captions'}</button><button data-srt="1" title="Use an .srt file instead of transcribing" ${capBusy ? 'disabled' : ''}>Import .srt</button><input type="file" data-srtfile="1" accept=".srt,text/plain" hidden><select data-caplang="1" title="Language spoken in the clips" style="flex:none;width:88px">${LANGS.map(([k, n]) => `<option value="${k}" ${k === capLang ? 'selected' : ''}>${n}</option>`).join('')}</select>`; }
+function wireCaptions(root){ root.querySelectorAll('[data-srt]').forEach(e => e.onclick = () => e.parentNode.querySelector('[data-srtfile]').click()); root.querySelectorAll('[data-srtfile]').forEach(e => e.onchange = () => { if (e.files[0]) importSrt(e.files[0]); e.value = ''; }); root.querySelectorAll('[data-cap]').forEach(e => e.onclick = autoCaptions); root.querySelectorAll('[data-caplang]').forEach(e => e.onchange = () => { capLang = e.value; }); }
 const MB = b => b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : Math.round(b / 1e6) + ' MB';
 async function askModel(m){                          // the app's transcriber needs its speech model once: ask, then fetch it with progress
   const dlg = $('#dlgModel');
@@ -450,6 +450,17 @@ async function askModel(m){                          // the app's transcriber ne
   while (j.status === 'running') { busy(`Downloading the speech model… ${MB(j.bytes)}${j.size ? ' / ' + MB(j.size) : ''}`); await new Promise(z => setTimeout(z, 1000)); j = await (await fetch('/api/model')).json(); }
   if (j.status !== 'done') { setStatus('✗ ' + (j.error || 'The download failed.'), true); return false; }
   return true;
+}
+async function importSrt(file){
+  if (capBusy || (dirty && !(await save()))) return;
+  capBusy = true; renderLib(); renderWords(); busy('Reading the .srt…');
+  try {
+    let j = await (await fetch('/api/captions', { method: 'POST', body: JSON.stringify({ srt: await file.text() }) })).json();
+    while (j.status === 'running') { await new Promise(r => setTimeout(r, 500)); j = await (await fetch('/api/captions')).json(); }
+    capBusy = false;
+    if (j.status !== 'done') { renderLib(); renderWords(); setStatus('✗ ' + (j.error || 'Import failed.'), true); return; }
+    await load(); setStatus(`✓ ${j.captions} captions written from ${file.name}`);
+  } catch (e) { capBusy = false; renderLib(); renderWords(); setStatus('✗ ' + e, true); }
 }
 async function autoCaptions(){
   if (capBusy || (dirty && !(await save()))) return;
