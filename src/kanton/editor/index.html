@@ -312,7 +312,7 @@ async function load(){
 async function save(){
   const r = await fetch('/api/spec', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Version': D.version || '' }, body: JSON.stringify(S) });
   const j = await r.json();
-  if (r.status === 409) { D.version = j.version; setStatus('✗ Not saved: ' + j.error + '. Save again to overwrite it, or reload the page to take it.', true); return false; }
+  if (r.status === 409) { D.version = j.version; setStatus('✗ Not saved: ' + j.error + '. Save again: keeps your edits in the page, discards what was written on disk (an agent or another program). Revert: takes the file on disk, discards the unsaved edits in the page.', true); return false; }
   if (!r.ok) { setStatus('✗ Not saved: ' + j.error, true); return false; }
   adopt(j); setStatus('Saved ' + new Date().toLocaleTimeString()); return true;
 }
