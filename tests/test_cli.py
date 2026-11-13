@@ -93,20 +93,21 @@ def test_captions_refresh_from_srt_and_force(media, tmp_path):
     assert [t["text"] for t in d["texts"] if t.get("role") == "caption"] == ["encore"]
 
 
-def test_captions_with_null_words_field(media, tmp_path):
-    p = spec_for(media, tmp_path, blocks=[{"src": "face", "in": 0.5, "out": 4.0}], words=None)
+def test_captions_with_null_words_field(tmp_path, monkeypatch):
+    from argparse import Namespace
+    from kanton import cli
+
+    p = spec_for({"face": tmp_path / "source.mp4"}, tmp_path, blocks=[{"src": "face", "in": 0.5, "out": 4.0}], words=None)
     words = tmp_path / "w.json"
     words.write_text(json.dumps([{"word": "salut", "start": 0.6, "end": 0.9}]))
-    r = run("captions", p, "--words", f"face={words}")
-    assert r.returncode == 0, r.stderr
+    cli.cmd_captions(Namespace(spec=str(p), words=[f"face={words}"], backend="python", python=sys.executable, lang="fr", force=False))
     assert json.loads(p.read_text())["words"]["face"][0]["word"] == "salut"
 
     p.write_text(json.dumps({**json.loads(p.read_text()), "words": None}))
-    stub = tmp_path / "mlx_whisper.py"
-    stub.write_text("def transcribe(path, **kw):\n    return {'segments': [{'words': [{'word': ' encore', 'start': 1.0, 'end': 1.4}]}]}\n")
-    r = run("captions", p, "--force", "--backend", "python", "--python", sys.executable, env={"PYTHONPATH": str(tmp_path)})
-    assert r.returncode == 0, r.stderr
-    assert json.loads(p.read_text())["words"]["face"][0]["word"] == "encore"
+    monkeypatch.setattr(cli, "words_for", lambda spec, src, backend, python, language, force=False: [{"word": "encore", "start": 1.0, "end": 1.4}])
+    cli.cmd_captions(Namespace(spec=str(p), words=None, backend="python", python=sys.executable, lang="fr", force=True))
+    d = json.loads(p.read_text())
+    assert d["words"] == {} and [t["text"] for t in d["texts"] if t.get("role") == "caption"] == ["encore"]
 
 
 def test_blanks_dry_and_apply(media, tmp_path):

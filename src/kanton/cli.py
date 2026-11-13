@@ -115,12 +115,14 @@ def cmd_captions(a):
     from .captions import apply_captions
     spec = _spec(a.spec)
     given = _parse_words_args(a.words)                           # .srt / words JSON brought by the user: they replace the transcript
+    stored_words = spec.data.get("words") or {}
+    spec.data["words"] = stored_words
     if given:
-        spec.data.setdefault("words", {}).update(given)
-    words = dict(spec.data.get("words") or {})
+        stored_words.update(given)
+    words = dict(stored_words)
     for src in sorted({b["src"] for b in spec.blocks}):
         if src not in given and (a.force or src not in words):   # --force: transcribe again even if the spec already holds words
-            spec.data.get("words", {}).pop(src, None)            # the old transcript no longer matches the captions
+            stored_words.pop(src, None)                          # the old transcript no longer matches the captions
             words[src] = words_for(spec, src, a.backend, a.python, a.lang, force=a.force)
     n = apply_captions(spec, words)
     spec.save()
