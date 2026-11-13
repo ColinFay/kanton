@@ -73,6 +73,26 @@ def test_captions_from_words_file(media, tmp_path):
     assert "2 captions" in r.stdout
 
 
+def test_captions_refresh_from_srt_and_force(media, tmp_path):
+    p = spec_for(media, tmp_path, blocks=[{"src": "face", "in": 0.5, "out": 4.0}])
+    words = tmp_path / "w.json"
+    words.write_text(json.dumps([{"word": "salut", "start": 0.6, "end": 0.9}, {"word": "toi", "start": 1.0, "end": 1.3}]))
+    assert run("captions", p, "--words", f"face={words}").returncode == 0
+    srt = tmp_path / "c.srt"
+    srt.write_text("1\n00:00:01,000 --> 00:00:02,000\nbonjour tout le monde\n")
+    r = run("captions", p, "--words", f"face={srt}")                         # an .srt replaces the captions and is kept in the spec
+    assert r.returncode == 0, r.stderr
+    d = json.loads(p.read_text())
+    caps = [t["text"] for t in d["texts"] if t.get("role") == "caption"]
+    assert caps == ["bonjour tout le monde"] and [w["word"] for w in d["words"]["face"]] == ["bonjour", "tout", "le", "monde"]
+    stub = tmp_path / "mlx_whisper.py"                                       # --force transcribes again, whatever the spec holds
+    stub.write_text("def transcribe(path, **kw):\n    return {'segments': [{'words': [{'word': ' encore', 'start': 1.0, 'end': 1.4}]}]}\n")
+    r = run("captions", p, "--force", "--backend", "python", "--python", sys.executable, env={"PYTHONPATH": str(tmp_path)})
+    assert r.returncode == 0, r.stderr
+    d = json.loads(p.read_text())
+    assert [t["text"] for t in d["texts"] if t.get("role") == "caption"] == ["encore"]
+
+
 def test_blanks_dry_and_apply(media, tmp_path):
     p = spec_for(media, tmp_path, blocks=[{"src": "face", "in": 0.0, "out": 6.0}])
     before = p.read_text()
