@@ -279,6 +279,16 @@ def test_spec_reloads_when_the_file_changes_on_disk(server):
     assert v1 != v0 and d1["version"] == v1 and d1["spec"]["blocks"][1]["zoom"] == 110
 
 
+def test_version_is_a_string_so_javascript_cannot_round_it(server):
+    """mtime_ns is above 2**53: as a JSON number the page rounds it, sends back another value, and every save is a 409."""
+    d0 = json.loads(get(server["url"] + "/api/spec")[2])
+    assert isinstance(d0["version"], str)
+    assert isinstance(json.loads(get(server["url"] + "/api/version")[2])["version"], str)
+    _write_outside(server, 110)
+    st, j = put(server["url"] + "/api/spec", d0["spec"], headers={"X-Version": d0["version"]})
+    assert st == 409 and isinstance(j["version"], str)
+
+
 def test_half_written_file_keeps_the_last_good_spec(server):
     d0 = json.loads(get(server["url"] + "/api/spec")[2])
     Path(server["spec"]).write_text('{"kanton": 1, "blocks": [')

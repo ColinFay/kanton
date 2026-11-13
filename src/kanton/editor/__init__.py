@@ -387,7 +387,11 @@ class State:
                 pass
 
     def payload(self) -> dict:
-        return {**_payload(self.spec), "version": self.mtime}
+        return {**_payload(self.spec), "version": self.version()}
+
+    def version(self) -> str | None:
+        """The mtime as a string: in ns it exceeds 2**53, and a JSON number would be rounded by the page."""
+        return str(self.mtime) if self.mtime else None
 
     def want_segments(self, spec: Spec) -> list[dict]:
         """Each block's pieces (`spec`: the blocks on the page, saved or not), built in the background in reel order; the
@@ -662,7 +666,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/version":
             with st.lock:
                 st.fresh()
-                return self._json(200, {"version": st.mtime})
+                return self._json(200, {"version": st.version()})
         if p == "/api/catalog":
             with st.lock:
                 return self._json(200, _catalog(st.spec))
@@ -842,8 +846,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {"error": "no spec open"})
             st.fresh()
             v = self.headers.get("X-Version")
-            if v and st.mtime and int(v) != st.mtime:
-                return self._json(409, {"error": f"{st.spec.path.name} changed on disk since the page loaded it", "version": st.mtime})
+            if v and st.mtime and v != st.version():
+                return self._json(409, {"error": f"{st.spec.path.name} changed on disk since the page loaded it", "version": st.version()})
             try:
                 spec = Spec(data, st.spec.path)
             except (SystemExit, ValueError, TypeError) as e:
