@@ -359,18 +359,22 @@ async function applyWords(){
 // ── library ────────────────────────────────────────────────────────────────
 const srcKind = (k, s) => s.kind === 'image' ? 'image' : s.kind === 'audio' ? 'audio' : s.has_alpha ? 'sticker' : 'video';
 const fmtDur = d => d ? `${d.toFixed(1)} s` : '';
+function sourceInfo(key){
+  const path = S && S.sources && S.sources[key], sources = D && D.sources || {};
+  return sources[key] || Object.values(sources).find(s => s.path === path) || {};
+}
 function renderLib(){
   const lib = $('#lib'); if (!S) { lib.innerHTML = ''; return; }
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  const srcs = Object.entries(D.sources || {});
+  const srcs = Object.entries(S.sources || {}).map(([k]) => [k, sourceInfo(k)]);
   let h = '';
   if (tab === 'media') {
     h += `<h3>Media</h3><div class="row"><button id="bImport"><svg class="i"><use href="#i-import"/></svg>Import file…</button></div>`;
     const vids = srcs.filter(([k, s]) => s.kind === 'video' || s.missing);
-    h += vids.length ? vids.map(([k, s]) => `<div class="item" data-src="${esc(k)}" title="Click: add a clip of it at the end"><div class="th"><svg class="i"><use href="#i-media"/></svg></div><div class="nm">${esc(k)}<div class="meta">${s.missing ? 'missing file' : `${s.width}×${s.height} · ${fmtDur(s.duration)}`}</div></div></div>`).join('')
+    h += vids.length ? vids.map(([k, s]) => `<div class="item" data-src="${esc(k)}" title="Click: add a clip of it at the end"><div class="th"><svg class="i"><use href="#i-media"/></svg></div><div class="nm">${esc(k)}<div class="meta">${s.missing ? 'missing file' : `${s.width}×${s.height} · ${fmtDur(s.duration)}`}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button></div>`).join('')
       : `<div class="empty"><b>No video yet.</b> Import a clip, or run <kbd>kanton new rush.mp4</kbd>.</div>`;
     const imgs = srcs.filter(([k, s]) => s.kind === 'image');
-    if (imgs.length) h += `<h3 style="margin-top:12px">Images</h3>` + imgs.map(([k, s]) => `<div class="item" data-src="${esc(k)}" data-img="1" title="Click: a still of it on the main track at the playhead"><div class="th"><img src="${esc(s.url)}" alt=""></div><div class="nm">${esc(k)}<div class="meta">${s.width}×${s.height}</div></div></div>`).join('');
+    if (imgs.length) h += `<h3 style="margin-top:12px">Images</h3>` + imgs.map(([k, s]) => `<div class="item" data-src="${esc(k)}" data-img="1" title="Click: a still of it on the main track at the playhead"><div class="th"><img src="${esc(s.url)}" alt=""></div><div class="nm">${esc(k)}<div class="meta">${s.width}×${s.height}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button></div>`).join('');
     h += `<div class="hint">Clips go to the end of the video; images become a 3 s still at the playhead. Drag on the timeline to reorder.</div>`;
   } else if (tab === 'audio') {
     h += `<div class="row"><button id="bRec" class="${rec ? 'rec' : ''}" title="Record from the playhead while the video plays, muted">${rec ? `Stop recording · ${recSecs()} s` : '<svg class="i"><use href="#i-mic"/></svg>Record voiceover'}</button></div>`;
@@ -379,7 +383,7 @@ function renderLib(){
     h += S.music ? `<div class="item ${sel && sel.kind === 'music' ? 'on' : ''}" data-pick="music"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(S.music.src)}<div class="meta">${S.music.gain_db || 0} dB${S.music.loop ? ' · loop' : ''}${S.music.duck ? ' · ducked' : ''}</div></div></div>` : `<div class="empty">No music. Pick a file below.</div>`;
     h += `<h3 style="margin-top:12px">Sounds</h3>` + ((S.sounds || []).length ? S.sounds.map((m, i) => `<div class="item ${sel && sel.kind === 'sound' && sel.i === i ? 'on' : ''}" data-pick="sound" data-i="${i}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(m.src)}<div class="meta">at ${(m.t || 0).toFixed(2)} s</div></div></div>`).join('') : `<div class="empty">No sound effect or voice-over yet.</div>`);
     const auds = srcs.filter(([k, s]) => s.has_audio || s.kind === 'audio');
-    h += `<h3 style="margin-top:12px">Files with sound</h3>` + (auds.length ? auds.map(([k, s]) => `<div class="item" data-aud="${esc(k)}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(k)}<div class="meta">${fmtDur(s.duration)}</div></div><button data-music="${esc(k)}" title="Use as the music">Music</button><button data-sound="${esc(k)}" title="Add as a sound at the playhead">Sound</button></div>`).join('') : `<div class="empty">Import a music or sound file with the button above, or drop it on the page.</div>`);
+    h += `<h3 style="margin-top:12px">Files with sound</h3>` + (auds.length ? auds.map(([k, s]) => `<div class="item" data-aud="${esc(k)}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(k)}<div class="meta">${fmtDur(s.duration)}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button><button data-music="${esc(k)}" title="Use as the music">Music</button><button data-sound="${esc(k)}" title="Add as a sound at the playhead">Sound</button></div>`).join('') : `<div class="empty">Import a music or sound file with the button above, or drop it on the page.</div>`);
   } else if (tab === 'text') {
     h += `<h3>Auto captions</h3><div class="row">${capButton()}</div><div class="hint">Transcribes the clips with no words yet, then writes the captions in the preset's style. Replaces the existing captions.</div>`;
     h += `<h3 style="margin-top:12px">Add a text</h3><div class="chips">` + CAT.roles.map(r => `<span class="chip" data-role="${esc(r)}">${esc(r)}</span>`).join('') + `</div>`;
@@ -413,9 +417,10 @@ function renderLib(){
   lib.innerHTML = h;
   if (tab === 'agent') { paintChat(); $('#bChat').onclick = sendChat; $('#chatIn').onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat(); } }; }
   lib.querySelectorAll('[data-src]').forEach(e => e.onclick = () => e.dataset.img ? addStill(e.dataset.src) : addBlock(e.dataset.src));
-  lib.querySelectorAll('[data-stk]').forEach(e => e.onclick = () => addOverlay(e.dataset.stk, D.sources[e.dataset.stk].kind === 'image' ? 'image' : 'sticker'));
+  lib.querySelectorAll('[data-stk]').forEach(e => e.onclick = () => addOverlay(e.dataset.stk, sourceInfo(e.dataset.stk).kind === 'image' ? 'image' : 'sticker'));
   lib.querySelectorAll('[data-pip]').forEach(e => e.onclick = () => addOverlay(e.dataset.pip, 'video', true));
   lib.querySelectorAll('[data-pick]').forEach(e => e.onclick = () => select({ kind: e.dataset.pick, i: +(e.dataset.i || 0) }));
+  lib.querySelectorAll('[data-rename]').forEach(e => e.onclick = ev => { ev.stopPropagation(); renameSource(e.dataset.rename); });
   lib.querySelectorAll('[data-music]').forEach(e => e.onclick = ev => { ev.stopPropagation(); S.music = { src: e.dataset.music, gain_db: -20 }; recompute(); draw(); select({ kind: 'music', i: 0 }); markDirty(); renderLib(); });
   lib.querySelectorAll('[data-sound]').forEach(e => e.onclick = ev => { ev.stopPropagation(); S.sounds = S.sounds || []; S.sounds.push({ src: e.dataset.sound, t: fr(t), dur: 2 }); draw(); select({ kind: 'sound', i: S.sounds.length - 1 }); markDirty(); renderLib(); });
   lib.querySelectorAll('[data-role]').forEach(e => e.onclick = () => addText(e.dataset.role));
@@ -517,10 +522,25 @@ async function importFiles(files){   // each file copied next to the spec by the
     const fd = new FormData(); fd.append('file', f, f.name); busy(`Importing ${f.name}…`);
     const r = await fetch('/api/import', { method: 'POST', body: fd }); const j = await r.json();
     if (!r.ok) { setStatus('✗ ' + j.error, true); continue; }
-    if (dirty) { j.spec.blocks = S.blocks; j.spec.texts = S.texts; j.spec.overlays = S.overlays; j.spec.music = S.music; j.spec.sounds = S.sounds; j.spec.effects = S.effects; j.spec.markers = S.markers; j.spec.grade = S.grade; }   // the edits in hand stay
+    if (dirty) { const sources = { ...S.sources }, path = j.spec.sources[j.key]; if (!Object.values(sources).includes(path)) sources[j.key] = path; j.spec.sources = sources; j.spec.blocks = S.blocks; j.spec.blocks_raw = S.blocks_raw; j.spec.words = S.words; j.spec.texts = S.texts; j.spec.overlays = S.overlays; j.spec.music = S.music; j.spec.sounds = S.sounds; j.spec.effects = S.effects; j.spec.markers = S.markers; j.spec.grade = S.grade; }   // the edits in hand stay
     const wasDirty = dirty; adopt(j); if (wasDirty) markDirty(true); setStatus(`Imported ${j.key}`); key = j.key;
   }
   renderLib(); return key;
+}
+function renameSource(oldKey){
+  const newKey = prompt('Rename media (letters, numbers, ".", "_" and "-" only):', oldKey);
+  if (newKey === null) return;
+  const name = newKey.trim();
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(name) || name === '.' || name === '..') return setStatus('✗ Use 1–100 letters, numbers, dots, underscores or hyphens.', true);
+  if (name !== oldKey && Object.prototype.hasOwnProperty.call(S.sources, name)) return setStatus(`✗ Media "${name}" already exists.`, true);
+  if (name === oldKey) return;
+  S.sources = Object.fromEntries(Object.entries(S.sources).map(([k, v]) => [k === oldKey ? name : k, v]));
+  for (const list of [S.blocks, S.blocks_raw, S.overlays, S.sounds]) for (const item of list || []) if (item.src === oldKey) item.src = name;
+  if (S.music && S.music.src === oldKey) S.music.src = name;
+  if (S.words && Object.prototype.hasOwnProperty.call(S.words, oldKey)) {
+    S.words[name] = S.words[oldKey]; delete S.words[oldKey];
+  }
+  markDirty(); draw(); renderLib(); inspect(); overlayAt(t);
 }
 $('#fileIn').onchange = async e => { await importFiles(e.target.files); e.target.value = ''; };
 $('#audIn').onchange = async e => { await importFiles(e.target.files); e.target.value = ''; };
@@ -570,7 +590,7 @@ function draw(){
   T.blocks.forEach(b => {
     const e = blk(b.still ? 'v1 still' : 'v1', px(b.start), b.dur * pxs, `${b.src}${b.still ? ' · still' : ''}${b.curve ? ' · curve' : b.speed !== 1 ? ` · ${+b.speed.toFixed(2)}×` : ''} · ${b.dur.toFixed(1)} s`, { kind: 'block', i: b.i }); trV.appendChild(e);
     film(e, b, px(b.start), b.dur * pxs);
-    const sv = D.sources[b.src] || {};
+    const sv = sourceInfo(b.src);
     if (sv.has_audio && !b.mute) wave(e, b.src, px(b.start), b.dur * pxs, 12, false, 'rgba(255,255,255,.75)', x => { const o = srcOff(b, x / pxs); return b.reverse ? b.out - o : b.in + o; });
     const c = S.blocks[b.i].cut, name = c && (typeof c === 'string' ? c : c.type);
     if (b.i > 0 && name && name !== 'none') { const x = document.createElement('div'); x.className = 'cut'; x.style.left = px(b.start) + 'px'; x.title = `transition: ${name}`; x.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-chev"/></svg>'; x.onclick = ev => { ev.stopPropagation(); select({ kind: 'block', i: b.i }); tab = 'transitions'; renderLib(); }; trV.appendChild(x); }
@@ -583,7 +603,7 @@ function draw(){
   const au = [S.music ? { t: S.music.t || 0, dur: S.music.dur || (T.duration - (S.music.t || 0)) } : null, ...(S.sounds || []).map(m => ({ t: m.t || 0, dur: m.dur || 2 }))].filter(Boolean);
   const al = lanesOf(au), na = Math.max(1, ...al.map(x => x + 1)); const trAs = []; for (let k = 0; k < na; k++) trAs.push(mk(k ? '' : 'Audio', 'au'));
   const audio = (m, ref, d, label) => {      // a music or sound block: its waveform, and its beats
-    const left = px(m.t || 0), e = blk('mu', left, d * pxs, label, ref), sd = (D.sources[m.src] || {}).duration || 0;
+    const left = px(m.t || 0), e = blk('mu', left, d * pxs, label, ref), sd = sourceInfo(m.src).duration || 0;
     wave(e, m.src, left, d * pxs, 34, true, 'rgba(225,255,238,.5)', x => { let s = (m.in || 0) + x / pxs; if (m.loop && sd) s = (m.in || 0) + ((s - (m.in || 0)) % Math.max(1e-3, sd - (m.in || 0))); return s; });
     for (const b of m.beats || []) { const x = (b - (m.in || 0)) * pxs; if (x >= 0 && x <= d * pxs) { const dot = document.createElement('div'); dot.className = 'bt'; dot.style.left = x + 'px'; e.appendChild(dot); } }
     return e;
@@ -604,14 +624,14 @@ function blk(cls, left, width, label, ref){
 // ── what the lanes show: a filmstrip on the clips, waveforms, fetched once per source and drawn where visible ─────
 const STRIP = new Map(), PEAKS = new Map();
 function stripOf(src){
-  const s = D.sources[src]; if (!s || !s.strip) return null;
+  const s = sourceInfo(src); if (!s || !s.strip) return null;
   if (!STRIP.has(src)) { const img = new Image(); img.onload = () => draw(); img.onerror = () => setTimeout(() => { img.src = s.strip.url + '?t=' + Date.now(); }, 2000); img.src = s.strip.url; STRIP.set(src, img); }   // 202 while the strip is built
   const img = STRIP.get(src); return img.complete && img.naturalWidth ? s.strip : null;
 }
-const srcRev = src => JSON.stringify(D && D.sources && D.sources[src]);   // identity of a source: a reply for another one is stale
+const srcRev = src => JSON.stringify(sourceInfo(src));   // identity of a source: a reply for another one is stale
 function retryPeaks(src, rev){ setTimeout(() => { if (srcRev(src) === rev) { PEAKS.delete(src); draw(); } }, 2000); }   // a failed request is forgotten, so it is asked again
 function peaksOf(src){
-  const s = D.sources[src]; if (!s || !s.has_audio) return null;
+  const s = sourceInfo(src); if (!s || !s.has_audio) return null;
   if (!PEAKS.has(src)) {
     const rev = srcRev(src); PEAKS.set(src, null);
     fetch('/api/peaks/' + src).then(r => r.ok ? r.json() : null).then(j => {
@@ -624,7 +644,7 @@ function peaksOf(src){
 let drawnSL = 0, VR = [0, 0];                    // the scroll of the last draw, and the span it drew strips and waves on
 function visRange(left, width){ const a = Math.max(left, VR[0]), b = Math.min(left + width, VR[1]); return b > a ? [a - left, b - left] : null; }
 function film(e, b, left, width){
-  const s = D.sources[b.src] || {};
+  const s = sourceInfo(b.src);
   if (s.kind === 'image') { e.classList.add('pic'); e.style.backgroundImage = `url("${s.url}")`; e.style.backgroundSize = 'auto 100%'; return; }
   const m = stripOf(b.src), vr = visRange(left, width); if (!m || !vr) return;
   const h = 46, tw = Math.max(8, Math.round(m.w * h / m.h)); let html = '';
@@ -942,7 +962,7 @@ function motionAt(it, bx, by, tt, d){   // {x, y, s, r, o}: translation from (bx
   return v;
 }
 function ovBox(o){   // the overlay's box on the frame, like render.overlay_box
-  const s = D.sources[o.src] || {}, iw = Math.max(1, s.width || 1080), ih = Math.max(1, s.height || 1920); let w, h;
+  const s = sourceInfo(o.src), iw = Math.max(1, s.width || 1080), ih = Math.max(1, s.height || 1920); let w, h;
   if (o.width != null) { w = Math.round(o.width); h = o.height != null ? Math.round(o.height) : Math.max(1, Math.round(ih * w / iw)); }
   else if ((o.kind || 'video') === 'video') { w = W(); h = H(); } else if (o.kind === 'sticker') { const k = Math.min(W() / iw, H() / ih, 1); w = Math.round(iw * k); h = Math.round(ih * k); } else { w = iw; h = ih; }
   return { x: o.x != null ? +o.x : (W() - w) / 2, y: o.y != null ? +o.y : (H() - h) / 2, w, h };
@@ -966,7 +986,7 @@ function overlayAt(x){
     for (const [lx, ly, line] of L.lines) inner += `<div class="caption" style="left:${lx}px;top:${ly}px;font-size:${L.size}px;line-height:${L.asc + L.desc}px;color:${fill};-webkit-text-stroke:${2 * sw}px ${stroke};paint-order:stroke fill;${shadow}">${esc(line)}</div>`;
     h += `<div class="txlayer" style="${tr}" title="preview approximation">${inner}</div><div class="txhit ${sel && sel.kind === 'text' && sel.i === i ? 'sel' : ''}" data-tx="${i}" style="left:${bb[0] - 8}px;top:${bb[1] - 8}px;width:${bb[2] - bb[0] + 16}px;height:${bb[3] - bb[1] + 16}px;${tr}"></div>`; } });
   S.overlays.forEach((o, i) => { if (x >= (o.t || 0) && x < (o.t || 0) + (o.dur || 0)) {
-    const b = ovBox(o), s = D.sources[o.src] || {}, m = motionAt(o, b.x, b.y, x - (o.t || 0), o.dur || 0), clipP = maskClip(o.mask, b.w, b.h);
+    const b = ovBox(o), s = sourceInfo(o.src), m = motionAt(o, b.x, b.y, x - (o.t || 0), o.dur || 0), clipP = maskClip(o.mask, b.w, b.h);
     const st2 = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;transform:translate(${m.x}px,${m.y}px) scale(${m.s}) rotate(${m.r}deg);opacity:${m.o};${clipP ? `clip-path:${clipP};` : ''}${o.blend ? `mix-blend-mode:${o.blend === 'add' ? 'plus-lighter' : o.blend === 'softlight' ? 'soft-light' : o.blend === 'hardlight' ? 'hard-light' : o.blend};` : ''}${o.flip ? '' : ''}filter:${cssFilter(o.grade)}`;
     h += `<div class="ovbox ${sel && sel.kind === 'overlay' && sel.i === i ? 'sel' : ''}" data-ov="${i}" style="${st2}" title="preview approximation">${s.kind === 'image' ? `<img src="${esc(s.url)}" alt="" style="${o.flip ? 'transform:scaleX(-1)' : ''}">` : `<span class="lab">${esc(o.kind || 'video')} · ${esc(o.src)}</span>`}${sel && sel.kind === 'overlay' && sel.i === i ? '<div class="hd" data-hd="1"></div>' : ''}</div>`; } });
   if (h === ov._h) return;                      // playback: the same captions frame after frame, kept as they are
@@ -1044,7 +1064,7 @@ function topUp(){ const gen = segGen; segQ = segQ.then(() => window_(gen)).catch
 function stop(){ playing = false; $('#bPlay').innerHTML = '<svg class="i"><use href="#i-play"/></svg>'; video.pause(); }
 
 // ── add, split, freeze, markers, keyframes ─────────────────────────────────
-function addBlock(src){ const last = S.blocks[S.blocks.length - 1]; src = src || (last ? last.src : Object.keys(S.sources || {})[0]); if (!src) return setStatus('No video in this project: import one.', true); const s = D.sources[src] || {}; S.blocks.push(s.duration ? { src, in: 0, out: fr(s.duration) } : { src, in: fr(last ? last.out : 0), out: fr((last ? last.out : 0) + 2) }); recompute(); draw(); select({ kind: 'block', i: S.blocks.length - 1 }); markDirty(); }
+function addBlock(src){ const last = S.blocks[S.blocks.length - 1]; src = src || (last ? last.src : Object.keys(S.sources || {})[0]); if (!src) return setStatus('No video in this project: import one.', true); const s = sourceInfo(src); S.blocks.push(s.duration ? { src, in: 0, out: fr(s.duration) } : { src, in: fr(last ? last.out : 0), out: fr((last ? last.out : 0) + 2) }); recompute(); draw(); select({ kind: 'block', i: S.blocks.length - 1 }); markDirty(); }
 function addStill(src){ const b = blockAt(t), at = b ? (t < b.end ? b.i + 1 : S.blocks.length) : S.blocks.length; S.blocks.splice(at, 0, { src, dur: 3 }); recompute(); draw(); select({ kind: 'block', i: at }); markDirty(); }
 function addText(role){ S.texts.push({ text: role === 'caption' ? 'TEXTE' : 'TITRE', t: fr(t), dur: 1.5, role: role || 'caption' }); recompute(); draw(); select({ kind: 'text', i: S.texts.length - 1 }); markDirty(); renderLib(); }
 function addOverlay(src, kind, pip){ src = src || Object.keys(S.sources || {})[0]; if (!src) return; const o = { kind: kind || 'video', src, t: fr(t), dur: 2 }; if (kind !== 'image') o.in = 0; if (pip) { o.x = 90; o.y = 300; o.width = 900; } S.overlays.push(o); recompute(); draw(); select({ kind: 'overlay', i: S.overlays.length - 1 }); markDirty(); }
