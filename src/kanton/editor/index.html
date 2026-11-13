@@ -189,6 +189,7 @@
     </nav>
     <div id="lib"></div>
     <input type="file" id="fileIn" style="display:none" multiple>
+    <input type="file" id="audIn" style="display:none" multiple accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff">
   </section>
   <section id="player">
     <div id="stagebox"><div id="stage"><div class="frame"><video id="v" playsinline></video><div class="vig" id="vig"></div><div class="ov" id="ov"></div><div class="safe" id="safe"></div></div><div id="wait"></div></div></div>
@@ -373,11 +374,12 @@ function renderLib(){
     h += `<div class="hint">Clips go to the end of the video; images become a 3 s still at the playhead. Drag on the timeline to reorder.</div>`;
   } else if (tab === 'audio') {
     h += `<div class="row"><button id="bRec" class="${rec ? 'rec' : ''}" title="Record from the playhead while the video plays, muted">${rec ? `Stop recording · ${recSecs()} s` : '<svg class="i"><use href="#i-mic"/></svg>Record voiceover'}</button></div>`;
+    h += `<div class="row"><button id="bImportAudio" title="Copy an audio file next to the spec; then use it as music or a sound"><svg class="i"><use href="#i-import"/></svg>Import audio…</button></div>`;
     h += `<h3>Music</h3>`;
     h += S.music ? `<div class="item ${sel && sel.kind === 'music' ? 'on' : ''}" data-pick="music"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(S.music.src)}<div class="meta">${S.music.gain_db || 0} dB${S.music.loop ? ' · loop' : ''}${S.music.duck ? ' · ducked' : ''}</div></div></div>` : `<div class="empty">No music. Pick a file below.</div>`;
     h += `<h3 style="margin-top:12px">Sounds</h3>` + ((S.sounds || []).length ? S.sounds.map((m, i) => `<div class="item ${sel && sel.kind === 'sound' && sel.i === i ? 'on' : ''}" data-pick="sound" data-i="${i}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(m.src)}<div class="meta">at ${(m.t || 0).toFixed(2)} s</div></div></div>`).join('') : `<div class="empty">No sound effect or voice-over yet.</div>`);
     const auds = srcs.filter(([k, s]) => s.has_audio || s.kind === 'audio');
-    h += `<h3 style="margin-top:12px">Files with sound</h3>` + (auds.length ? auds.map(([k, s]) => `<div class="item" data-aud="${esc(k)}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(k)}<div class="meta">${fmtDur(s.duration)}</div></div><button data-music="${esc(k)}" title="Use as the music">Music</button><button data-sound="${esc(k)}" title="Add as a sound at the playhead">Sound</button></div>`).join('') : `<div class="empty">Import a music or sound file from Media.</div>`);
+    h += `<h3 style="margin-top:12px">Files with sound</h3>` + (auds.length ? auds.map(([k, s]) => `<div class="item" data-aud="${esc(k)}"><div class="th"><svg class="i"><use href="#i-audio"/></svg></div><div class="nm">${esc(k)}<div class="meta">${fmtDur(s.duration)}</div></div><button data-music="${esc(k)}" title="Use as the music">Music</button><button data-sound="${esc(k)}" title="Add as a sound at the playhead">Sound</button></div>`).join('') : `<div class="empty">Import a music or sound file with the button above, or drop it on the page.</div>`);
   } else if (tab === 'text') {
     h += `<h3>Auto captions</h3><div class="row">${capButton()}</div><div class="hint">Transcribes the clips with no words yet, then writes the captions in the preset's style. Replaces the existing captions.</div>`;
     h += `<h3 style="margin-top:12px">Add a text</h3><div class="chips">` + CAT.roles.map(r => `<span class="chip" data-role="${esc(r)}">${esc(r)}</span>`).join('') + `</div>`;
@@ -426,6 +428,7 @@ function renderLib(){
   lib.querySelectorAll('[data-adj]').forEach(e => e.onchange = () => markDirty());
   const rs = $('#bAdjReset'); if (rs) rs.onclick = () => { delete S.grade; markDirty(); renderLib(); overlayAt(t); };
   const imp = $('#bImport'); if (imp) imp.onclick = () => $('#fileIn').click();
+  const impA = $('#bImportAudio'); if (impA) impA.onclick = () => $('#audIn').click();
   const br = $('#bRec'); if (br) br.onclick = toggleRec;
   wireCaptions(lib);
 }
@@ -520,6 +523,7 @@ async function importFiles(files){   // each file copied next to the spec by the
   renderLib(); return key;
 }
 $('#fileIn').onchange = async e => { await importFiles(e.target.files); e.target.value = ''; };
+$('#audIn').onchange = async e => { await importFiles(e.target.files); e.target.value = ''; };
 let dragN = 0;
 const hasFiles = ev => [...(ev.dataTransfer && ev.dataTransfer.types || [])].includes('Files');
 window.addEventListener('dragenter', ev => { if (!hasFiles(ev) || !S) return; dragN++; $('#drop').style.display = 'flex'; });
