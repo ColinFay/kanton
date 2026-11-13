@@ -180,3 +180,15 @@ def test_a_model_picked_on_disk_goes_through_the_check(server, monkeypatch):
     assert st == 200 and j["present"] and j["path"] == "/models/turbo" and j["status"] == "idle"
     body = get(server["url"] + "/")[2]
     assert b'value="pick"' in body and b"pick_model_dialog" in body
+
+
+def _fn(body, name):
+    i = body.index(f"function {name}(")
+    j = body.index("\nfunction ", i + 1)
+    return body[i:j]
+
+
+def test_timeline_drag_rebuilds_the_inspector_only_on_release(server):
+    body = get(server["url"] + "/")[2].decode()
+    assert "inspect()" not in _fn(body, "onDrag")          # not on every pointermove
+    assert "inspect()" in _fn(body, "endDrag")             # once, when the drag moved something

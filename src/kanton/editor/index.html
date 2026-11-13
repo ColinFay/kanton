@@ -669,9 +669,9 @@ function onDrag(ev){
     else if (drag.mode === 'r') { const e1 = snapTo((o.t || 0) + d0 + ds); if (o.end != null) it.end = fr(Math.max(o.t + f, e1)); else it.dur = fr(Math.max(f, e1 - (o.t || 0))); }
     else { it.t = fr(Math.max(0, snapMove(Math.max(0, (o.t || 0) + ds), d0))); if (o.end != null) it.end = fr(it.t + d0); }
   }
-  recompute(); draw(); inspect(); markDirty(true);
+  recompute(); draw(); markDirty(true);
 }
-function endDrag(){ window.removeEventListener('pointermove', onDrag); if (drag && drag.moved && drag.ref.kind === 'block') { follow(drag.old); draw(); } const moved = drag && drag.moved; drag = null; if (moved) { if (snapOn) snapAll(); markDirty(); } }
+function endDrag(){ window.removeEventListener('pointermove', onDrag); if (drag && drag.moved && drag.ref.kind === 'block') { follow(drag.old); draw(); } const moved = drag && drag.moved; drag = null; if (moved) { if (snapOn) snapAll(); markDirty(); inspect(); } }
 function follow(old){
   const kept = (b, x, last) => {
     const s = b.in + (Math.min(Math.max(x, b.start), b.end) - b.start) * b.speed, [a, z] = last ? [b.in, s] : [s, b.in + b.dur * b.speed];
