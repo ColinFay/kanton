@@ -36,7 +36,7 @@
   #lib .row { display:flex; gap:6px; margin-bottom:8px } #lib .row > * { flex:1 }
   .item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--r); cursor:pointer; border:1px solid transparent; transition:background var(--t), border-color var(--t) }
   .item:hover { background:#22252e } .item.on { border-color:var(--acc) } .item .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .item .meta { color:var(--muted); font-size:11px }
-  .item .th { width:36px; height:36px; border-radius:4px; background:#2a2d37; flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); overflow:hidden } .item .th img { width:100%; height:100%; object-fit:cover }
+  .item .th { width:36px; height:36px; border-radius:4px; background:#2a2d37; flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); overflow:hidden } .item .th img, .item .th canvas { width:100%; height:100%; object-fit:cover }
   .chips { display:flex; flex-wrap:wrap; gap:6px } .chip { padding:5px 9px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:12px; background:#1d1f26; transition:border-color var(--t), background var(--t) }
   .chip:hover { border-color:#4a4e5c; background:#262933 } .chip.on { border-color:var(--acc); color:var(--acc) }
   .looks { display:grid; grid-template-columns:repeat(3,1fr); gap:8px } .look { cursor:pointer; text-align:center; font-size:11px; color:var(--muted) } .look .sw { height:48px; border-radius:var(--r); border:1px solid var(--line); background:linear-gradient(135deg,#e8a94b 0%,#8fc1e3 45%,#3b3f6b 100%); margin-bottom:4px; transition:border-color var(--t) }
@@ -372,6 +372,25 @@ function sourceInfo(key){
   const path = S && S.sources && S.sources[key], sources = D && D.sources || {};
   return sources[key] || Object.values(sources).find(s => s.path === path) || {};
 }
+const THUMB = new Map();   // key|rev → the filmstrip image, whose first frame is the video's thumbnail in the media list
+function thumbs(){
+  $$('#lib .th[data-strip]').forEach(th => {
+    const k = th.dataset.strip, s = sourceInfo(k); if (!s.strip) return;
+    const paint = img => {
+      if (!th.isConnected) return;
+      const c = document.createElement('canvas'), n = 72, fw = s.strip.w, fh = s.strip.h, side = Math.min(fw, fh);
+      c.width = c.height = n; c.getContext('2d').drawImage(img, (fw - side) / 2, (fh - side) / 2, side, side, 0, 0, n, n);
+      th.replaceChildren(c);
+    };
+    const id = k + '|' + s.rev; let img = THUMB.get(id);
+    if (!img) {
+      img = new Image(); THUMB.set(id, img);
+      img.onerror = () => setTimeout(() => { img.src = s.strip.url + '?t=' + Date.now(); }, 2000);   // 202 while the strip is built
+      img.src = s.strip.url;
+    }
+    if (img.complete && img.naturalWidth) paint(img); else img.addEventListener('load', () => paint(img));
+  });
+}
 function renderLib(){
   const lib = $('#lib'); if (!S) { lib.innerHTML = ''; return; }
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
@@ -380,7 +399,7 @@ function renderLib(){
   if (tab === 'media') {
     h += `<h3>Media</h3><div class="row"><button id="bImport"><svg class="i"><use href="#i-import"/></svg>Import file…</button></div>`;
     const vids = srcs.filter(([k, s]) => s.kind === 'video' || s.missing);
-    h += vids.length ? vids.map(([k, s]) => `<div class="item" data-src="${esc(k)}" title="Click: add a clip of it at the end"><div class="th"><svg class="i"><use href="#i-media"/></svg></div><div class="nm">${esc(k)}<div class="meta">${s.missing ? 'missing file' : `${s.width}×${s.height} · ${fmtDur(s.duration)}`}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button></div>`).join('')
+    h += vids.length ? vids.map(([k, s]) => `<div class="item" data-src="${esc(k)}" title="Click: add a clip of it at the end"><div class="th"${s.strip ? ` data-strip="${esc(k)}"` : ''}><svg class="i"><use href="#i-media"/></svg></div><div class="nm">${esc(k)}<div class="meta">${s.missing ? 'missing file' : `${s.width}×${s.height} · ${fmtDur(s.duration)}`}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button></div>`).join('')
       : `<div class="empty"><b>No video yet.</b> Import a clip, or run <kbd>kanton new rush.mp4</kbd>.</div>`;
     const imgs = srcs.filter(([k, s]) => s.kind === 'image');
     if (imgs.length) h += `<h3 style="margin-top:12px">Images</h3>` + imgs.map(([k, s]) => `<div class="item" data-src="${esc(k)}" data-img="1" title="Click: a still of it on the main track at the playhead"><div class="th"><img src="${esc(s.url)}" alt=""></div><div class="nm">${esc(k)}<div class="meta">${s.width}×${s.height}</div></div><button data-rename="${esc(k)}" title="Rename this media">Rename</button></div>`).join('');
@@ -423,7 +442,7 @@ function renderLib(){
   } else if (tab === 'agent') {
     h += `<h3>Agent</h3><div class="hint">An agent, run in this project's folder (a token by default, or a command-line agent): it edits ${esc(D.name)} and the page follows the file.</div><div id="chat"></div><textarea id="chatIn" rows="3" placeholder="Ask for a change — ⌘⏎ sends"></textarea><div class="row"><button id="bChat" class="primary">Send</button></div>`;
   }
-  lib.innerHTML = h;
+  lib.innerHTML = h; thumbs();
   if (tab === 'agent') { paintChat(); $('#bChat').onclick = sendChat; $('#chatIn').onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendChat(); } }; }
   lib.querySelectorAll('[data-src]').forEach(e => e.onclick = () => e.dataset.img ? addStill(e.dataset.src) : addBlock(e.dataset.src));
   lib.querySelectorAll('[data-stk]').forEach(e => e.onclick = () => addOverlay(e.dataset.stk, sourceInfo(e.dataset.stk).kind === 'image' ? 'image' : 'sticker'));
