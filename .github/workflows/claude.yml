@@ -20,6 +20,7 @@ jobs:
       - run: python3 -m venv .venv && .venv/bin/pip install -q -e ".[app]" pytest && echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: "/pr"
-          claude_args: --allowedTools "Bash"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowedTools "Bash"
+            --append-system-prompt "When your changes are pushed, open the pull request yourself with the pr skill instead of posting a Create a PR link."
