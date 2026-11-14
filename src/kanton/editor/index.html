@@ -373,13 +373,14 @@ function sourceInfo(key){
   return sources[key] || Object.values(sources).find(s => s.path === path) || {};
 }
 const THUMB = new Map();   // key|path|rev → the filmstrip image, whose first frame is the video's thumbnail in the media list
-const thumbId = (k, s) => [k, s.path || (S.sources || {})[k] || '', s.rev].join('|');
+let thumbObs = null;
+const thumbId = (k, s) => [k, s.path || (S.sources || {})[k] || '', s.rev, s.strip && s.strip.url].join('|');
 function thumbs(){
   const live = new Set(Object.keys(S && S.sources || {}).map(k => thumbId(k, sourceInfo(k))));
   for (const [id, img] of THUMB) if (!live.has(id)) {   // source renamed, replaced or gone: free the image, stop its retries
     clearTimeout(img._retry); img.onerror = null; img.src = ''; THUMB.delete(id);
   }
-  $$('#lib .th[data-strip]').forEach(th => {
+  const start = th => {
     const k = th.dataset.strip, s = sourceInfo(k); if (!s.strip) return;
     const paint = img => {
       if (!th.isConnected) return;
@@ -387,14 +388,20 @@ function thumbs(){
       c.width = c.height = n; c.getContext('2d').drawImage(img, (fw - side) / 2, (fh - side) / 2, side, side, 0, 0, n, n);
       th.replaceChildren(c);
     };
-    const id = thumbId(k, s); let img = THUMB.get(id);
+    const id = thumbId(k, s); let img = THUMB.get(id);   // the id carries the strip url: a descriptor still stale during a rename can't be cached under the new name
     if (!img) {
       img = new Image(); THUMB.set(id, img);
       img.onerror = () => { img._retry = setTimeout(() => { if (THUMB.get(id) === img) img.src = s.strip.url + '?t=' + Date.now(); }, 2000); };   // 202 while the strip is built
       img.src = s.strip.url;
     }
     if (img.complete && img.naturalWidth) paint(img); else img.addEventListener('load', () => paint(img), {once: true});
-  });
+  };
+  // a strip is built on request and shares the preview pool: only ask for the rows that are on screen
+  thumbObs && thumbObs.disconnect();
+  const rows = $$('#lib .th[data-strip]'); if (!rows.length) return;
+  if (!window.IntersectionObserver) { rows.forEach(start); return; }
+  thumbObs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { thumbObs.unobserve(e.target); start(e.target); } }));
+  rows.forEach(th => thumbObs.observe(th));
 }
 function renderLib(){
   const lib = $('#lib'); if (!S) { lib.innerHTML = ''; return; }
