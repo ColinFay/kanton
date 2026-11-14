@@ -8,7 +8,7 @@ import sys
 import threading
 from pathlib import Path
 
-from . import ffmpeg
+from . import ffmpeg, projects
 from .editor import friendly, make_server
 from .spec import Spec
 
@@ -69,7 +69,32 @@ class Api:
             self.srv.state.load(path)
         except SystemExit as e:
             return {"ok": False, "error": friendly(str(e))}
+        projects.touch(path)
         return {"ok": True, **self.current()}
+
+    # home page: named projects in one folder
+    def home(self) -> dict:
+        return {"recent": projects.recent(), "projects_dir": str(projects.projects_dir())}
+
+    def create_project(self, name: str) -> dict:
+        try:
+            return self.open_spec(str(projects.create(name)))
+        except (ValueError, OSError) as e:
+            return {"ok": False, "error": str(e)}
+
+    def set_projects_dir(self, path: str) -> dict:
+        try:
+            projects.set_projects_dir(path)
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, **self.home()}
+
+    def pick_projects_dir_dialog(self) -> dict:
+        import webview
+        r = self.window.create_file_dialog(webview.FOLDER_DIALOG, directory=str(projects.projects_dir())) if self.window else None
+        if not r:
+            return {"ok": False, "error": "cancelled"}
+        return self.set_projects_dir(r[0] if isinstance(r, (list, tuple)) else r)
 
     def new_from_video(self, video: str, preset: str | None = None, out: str | None = None) -> dict:
         try:
@@ -77,6 +102,7 @@ class Api:
             self.srv.state.load(out)
         except SystemExit as e:
             return {"ok": False, "error": friendly(str(e))}
+        projects.touch(out)
         return {"ok": True, **self.current()}
 
     # dialogs (need the window)
