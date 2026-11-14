@@ -372,8 +372,13 @@ function sourceInfo(key){
   const path = S && S.sources && S.sources[key], sources = D && D.sources || {};
   return sources[key] || Object.values(sources).find(s => s.path === path) || {};
 }
-const THUMB = new Map();   // key|rev → the filmstrip image, whose first frame is the video's thumbnail in the media list
+const THUMB = new Map();   // key|path|rev → the filmstrip image, whose first frame is the video's thumbnail in the media list
+const thumbId = (k, s) => [k, s.path || (S.sources || {})[k] || '', s.rev].join('|');
 function thumbs(){
+  const live = new Set(Object.keys(S && S.sources || {}).map(k => thumbId(k, sourceInfo(k))));
+  for (const [id, img] of THUMB) if (!live.has(id)) {   // source renamed, replaced or gone: free the image, stop its retries
+    clearTimeout(img._retry); img.onerror = null; img.src = ''; THUMB.delete(id);
+  }
   $$('#lib .th[data-strip]').forEach(th => {
     const k = th.dataset.strip, s = sourceInfo(k); if (!s.strip) return;
     const paint = img => {
@@ -382,13 +387,13 @@ function thumbs(){
       c.width = c.height = n; c.getContext('2d').drawImage(img, (fw - side) / 2, (fh - side) / 2, side, side, 0, 0, n, n);
       th.replaceChildren(c);
     };
-    const id = k + '|' + s.rev; let img = THUMB.get(id);
+    const id = thumbId(k, s); let img = THUMB.get(id);
     if (!img) {
       img = new Image(); THUMB.set(id, img);
-      img.onerror = () => setTimeout(() => { img.src = s.strip.url + '?t=' + Date.now(); }, 2000);   // 202 while the strip is built
+      img.onerror = () => { img._retry = setTimeout(() => { if (THUMB.get(id) === img) img.src = s.strip.url + '?t=' + Date.now(); }, 2000); };   // 202 while the strip is built
       img.src = s.strip.url;
     }
-    if (img.complete && img.naturalWidth) paint(img); else img.addEventListener('load', () => paint(img));
+    if (img.complete && img.naturalWidth) paint(img); else img.addEventListener('load', () => paint(img), {once: true});
   });
 }
 function renderLib(){
