@@ -162,7 +162,7 @@
 <header>
   <b>kanton</b> <span id="name" class="st"></span><span id="status" class="st"></span>
   <span class="sp"></span>
-  <span id="appBtns" style="display:none"><button id="bOpen">Open…</button><button id="bNew">New…</button></span>
+  <span id="appBtns" style="display:none"><button id="bOpen">Open…</button><button id="bNew" title="Back to the home page (open or create another project)">Home</button></span>
   <button id="bUndo" class="icon" title="Undo (⌘Z)"><svg class="i"><use href="#i-undo"/></svg></button><button id="bRedo" class="icon" title="Redo (⇧⌘Z)"><svg class="i"><use href="#i-redo"/></svg></button>
   <button id="bPreview" title="Render a half-size preview and play it">Preview</button>
   <select id="fmt" title="Export format (written to the file as export.format)" style="width:auto"><option value="mp4">mp4</option><option value="mov">mov</option><option value="webm">webm</option><option value="gif">gif</option></select>
@@ -173,7 +173,7 @@
   <div style="font-size:28px"><b style="color:var(--acc)">kanton</b> <span style="color:var(--muted)">edit your vertical videos</span></div>
   <form id="sForm" style="display:flex; gap:8px"><input id="sName" placeholder="Name of the new project" autocomplete="off" style="width:260px"><button id="sNew" class="primary" type="submit">Create project</button></form>
   <div id="sRecent" style="width:420px; max-height:240px; overflow:auto"></div>
-  <div><button id="sOpen">Open a file…</button></div>
+  <div><button id="sOpen">Open a file…</button> <button id="sBack" style="display:none">Back to the project</button></div>
   <div style="color:var(--muted); font-size:12px">Projects are stored in <span id="sDir"></span> <button id="sDirBtn">Change…</button></div>
   <div id="sMsg" style="color:var(--muted); font-size:12px; max-width:560px; text-align:center"></div>
 </div>
@@ -302,7 +302,7 @@ async function renderHome(){
   $('#sRecent').innerHTML = h.recent.length ? `<h3>Recent projects</h3>` + h.recent.map((r, i) => `<div class="item" data-recent="${i}" style="cursor:pointer"><div class="nm">${esc(r.name)}<div class="meta">${esc(r.path)}</div></div></div>`).join('') : '';
   $$('#sRecent [data-recent]').forEach(el => el.onclick = () => viaApi(() => window.pywebview.api.open_spec(h.recent[el.dataset.recent].path)));
 }
-function showStart(on){ $('#start').style.display = on ? 'flex' : 'none'; }
+function showStart(on){ $('#start').style.display = on ? 'flex' : 'none'; $('#sBack').style.display = on && D && D.spec ? '' : 'none'; }
 async function viaApi(fn){ try { const r = await fn(); if (!r || !r.ok) { if (r && r.error && r.error !== 'cancelled') { $('#sMsg').textContent = r.error; setStatus('✗ ' + r.error, true); } return; } await load(); } catch (e) { setStatus('✗ ' + e, true); } }
 async function load(){
   const j = await (await fetch('/api/spec')).json();
@@ -1119,6 +1119,8 @@ async function exportReel(){
 // ── wiring ─────────────────────────────────────────────────────────────────
 $('#sOpen').onclick = $('#bOpen').onclick = () => viaApi(() => window.pywebview.api.open_spec_dialog());
 $('#bNew').onclick = () => { showStart(true); renderHome(); };
+$('#sBack').onclick = () => showStart(false);
+addEventListener('keydown', e => { if (e.key === 'Escape' && $('#start').style.display === 'flex' && D && D.spec) showStart(false); });
 $('#sForm').onsubmit = e => { e.preventDefault(); viaApi(() => window.pywebview.api.create_project($('#sName').value)); };
 $('#sDirBtn').onclick = async () => { const r = await window.pywebview.api.pick_projects_dir_dialog(); if (r && r.ok) renderHome(); else if (r && r.error !== 'cancelled') $('#sMsg').textContent = r.error; };
 $('#bApply').onclick = applyWords; $('#bDiscard').onclick = () => { ops = []; P = null; clip = null; renderWords(); };
