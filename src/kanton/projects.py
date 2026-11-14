@@ -67,16 +67,24 @@ def create(name: str) -> Path:
     return out
 
 
+def _recent_paths(d: dict) -> list[str]:
+    r = d.get("recent")
+    return [p for p in r if isinstance(p, str)] if isinstance(r, list) else []
+
+
 def touch(path: str | Path) -> None:
     """Put a project at the head of the recent list."""
     d, p = _load(), str(Path(path).resolve())
-    d["recent"] = [p] + [r for r in d.get("recent", []) if r != p][:RECENT_MAX - 1]
-    _save(d)
+    d["recent"] = [p] + [r for r in _recent_paths(d) if r != p][:RECENT_MAX - 1]
+    try:
+        _save(d)
+    except OSError:
+        pass
 
 
 def recent() -> list[dict]:
     out = []
-    for p in _load().get("recent", []):
+    for p in _recent_paths(_load()):
         f = Path(p)
         if f.is_file():
             out.append({"name": f.parent.name if f.name == "montage.json" else f.stem, "path": p, "mtime": f.stat().st_mtime})

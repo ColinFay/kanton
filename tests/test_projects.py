@@ -67,3 +67,18 @@ def test_api_home_create_and_settings(tmp_path):
         assert api.open_spec(str(tmp_path / "all" / "Reel" / "montage.json"))["ok"]
     finally:
         srv.shutdown()
+
+
+def test_recent_ignores_malformed_settings(tmp_path, monkeypatch):
+    monkeypatch.setenv("KANTON_HOME", str(tmp_path))
+    (tmp_path / "settings.json").write_text('{"recent": "nope"}', encoding="utf-8")
+    assert projects.recent() == []
+    (tmp_path / "settings.json").write_text('{"recent": [1, null]}', encoding="utf-8")
+    assert projects.recent() == []
+
+
+def test_touch_survives_unwritable_settings(tmp_path, monkeypatch):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    monkeypatch.setenv("KANTON_HOME", str(blocker / "sub"))
+    projects.touch(tmp_path / "montage.json")
